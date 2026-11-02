@@ -1,0 +1,5 @@
+#define TIME_WITH_SYS_TIME 1
+#define HAVE_SYS_TIME_H 1
+#define HAVE_DIRENT_H 1
+#define HAVE_MEMCPY 1
+#define HAVE_UNISTD_H 1

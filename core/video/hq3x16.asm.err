@@ -1,0 +1,1 @@
+video/hq3x16.asm:28: warning: dropping trailing empty parameter in call to multi-line macro `extern' [-w+pp-macro-params-legacy]

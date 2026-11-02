@@ -1,0 +1,2 @@
+vcache.asm:956: warning: dropping trailing empty parameter in call to multi-line macro `newsym' [-w+pp-macro-params-legacy]
+vcache.asm:958: warning: dropping trailing empty parameter in call to multi-line macro `newsym' [-w+pp-macro-params-legacy]

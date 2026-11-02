@@ -1,0 +1,6 @@
+cpu/spc700.asm:59: warning: dropping trailing empty parameter in call to multi-line macro `newsym' [-w+pp-macro-params-legacy]
+cpu/spc700.asm:61: warning: dropping trailing empty parameter in call to multi-line macro `newsym' [-w+pp-macro-params-legacy]
+cpu/spc700.asm:66: warning: dropping trailing empty parameter in call to multi-line macro `newsym' [-w+pp-macro-params-legacy]
+cpu/spc700.asm:71: warning: dropping trailing empty parameter in call to multi-line macro `newsym' [-w+pp-macro-params-legacy]
+cpu/spc700.asm:76: warning: dropping trailing empty parameter in call to multi-line macro `newsym' [-w+pp-macro-params-legacy]
+cpu/spc700.asm:81: warning: dropping trailing empty parameter in call to multi-line macro `newsym' [-w+pp-macro-params-legacy]
