@@ -27,10 +27,19 @@ extern const char *const lift_objname[128];
 #define M64(a) (*(u64u *)(uintptr_t)(u32)(a))
 #define PAR(r) ((u8)(!__builtin_parity((u8)(r))))
 
+#ifdef LIFT_NOMM
+#define LIFT_MMDECL
+#define LIFT_MMFLUSH() ((void)0)
+#define LIFT_MMRELOAD() ((void)0)
+#else
+#define LIFT_MMDECL mmx_t mm[8];
+#define LIFT_MMFLUSH() memcpy(LG.mm, mm, sizeof mm)
+#define LIFT_MMRELOAD() memcpy(mm, LG.mm, sizeof mm)
+#endif
 #define FLUSH() do { LG.eax=eax; LG.ecx=ecx; LG.edx=edx; LG.ebx=ebx; LG.esp=esp; LG.ebp=ebp; LG.esi=esi; LG.edi=edi; \
-    LG.cf=cf; LG.zf=zf; LG.sf=sf; LG.of=of; LG.pf=pf; LG.af=af; memcpy(LG.mm, mm, sizeof mm); } while (0)
+    LG.cf=cf; LG.zf=zf; LG.sf=sf; LG.of=of; LG.pf=pf; LG.af=af; LIFT_MMFLUSH(); } while (0)
 #define RELOAD() do { eax=LG.eax; ecx=LG.ecx; edx=LG.edx; ebx=LG.ebx; esp=LG.esp; ebp=LG.ebp; esi=LG.esi; edi=LG.edi; \
-    cf=LG.cf; zf=LG.zf; sf=LG.sf; of=LG.of; pf=LG.pf; af=LG.af; memcpy(mm, LG.mm, sizeof mm); } while (0)
+    cf=LG.cf; zf=LG.zf; sf=LG.sf; of=LG.of; pf=LG.pf; af=LG.af; LIFT_MMRELOAD(); } while (0)
 
 u32 ext_call(u32 id);                       /* call foreign C function; args at guest [LG.esp] */
 u32 lift_missing(u32 id);

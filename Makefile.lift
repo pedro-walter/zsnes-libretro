@@ -1,7 +1,7 @@
 # Lifted (x86 asm -> C) build:  make -f Makefile.lift BITS=32|64
 BITS ?= 64
 L     := build/lift
-O     := build/lift$(BITS)
+O     ?= build/lift$(BITS)
 CC    := gcc -m$(BITS)
 CFL   := -O1 -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore -D__LINUX__ -DNO_PNG -DLIFTED
 LIFTC := $(wildcard $(L)/lift_*.c)
@@ -50,3 +50,12 @@ itest: tools/lift/itest.py tools/lift/itest.c tools/lift/itest.h
 	gcc -m32 -O1 -w -no-pie -Itools/lift -Ibuild/itest -o build/itest/itest tools/lift/itest.c build/itest/itest_gen.c
 	build/itest/itest $(or $(TRIALS),24)
 .PHONY: itest
+
+# Ready-to-install 64-bit core (rename to match the .info file)
+dist64:
+	$(MAKE) -f Makefile.lift BITS=64 -j8
+	mkdir -p dist
+	cp build/lift64/zsnes_lifted.so dist/zsnes_libretro.so
+	cp zsnes_libretro.info dist/
+	@echo "dist/zsnes_libretro.so  (copy both files into RetroArch's cores / info directories)"
+.PHONY: dist64
