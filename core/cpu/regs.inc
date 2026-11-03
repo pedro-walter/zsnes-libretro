@@ -19,6 +19,9 @@
 ;Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 
+%ifdef __LIBRETRO__
+EXTSYM zs_regr_install
+%endif
 EXTSYM SFXEnable,regptr,initsfxregsr,initSA1regs,SA1Enable,initSDD1regs
 EXTSYM SPC7110Enable,initSPC7110regs,RTCEnable,RTCReset
 EXTSYM curypos,cycpl,debuggeron,pdh
@@ -247,6 +250,11 @@ NEWSYM initregr
     je .noRTC
     call RTCReset
 .noRTC
+%ifdef __LIBRETRO__
+    pushad
+    call zs_regr_install
+    popad
+%endif
     ret
 
 ; global variables

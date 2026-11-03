@@ -7,6 +7,7 @@ EXTSYM zs_cpu_op
 SECTION .bss
 GLOBAL zs_R
 zs_R resd 8
+GLOBAL zs_mcall_fn
 zs_mcall_fn resd 1
 zs_run_esp resd 1
 

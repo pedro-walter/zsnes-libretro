@@ -34,6 +34,11 @@ EXTSYM cycpb268,cycpb358,cycpbl,cycpblt,opexec268,opexec268cph
 EXTSYM opexec358,opexec358cph
 EXTSYM hdmarestart
 EXTSYM printhex8
+%ifdef __LIBRETRO__
+%include "cpu/regw_ids.inc"
+%include "cpu/regr_ids.inc"
+EXTSYM zs_regw_install,zs_regw_c,zs_regr_c,zs_R
+%endif
 
 
 
@@ -286,6 +291,11 @@ NEWSYM initregw
     je .nortc
     call RTCReset2
 .nortc
+%ifdef __LIBRETRO__
+    pushad
+    call zs_regw_install
+    popad
+%endif
     ret
 
 ; video memory change buffer for caching (65536/16=4096)
@@ -805,7 +815,7 @@ reg210Ew:
     ret
 
 SECTION .bss
-bgscroltemp resb 1
+NEWSYM bgscroltemp, resb 1
 SECTION .text
 
 ; BG2 horizontal scroll register
@@ -1868,3 +1878,84 @@ SECTION .bss
 SECTION .text
 
 
+
+
+%ifdef __LIBRETRO__
+; ---- C register-write stubs: save machine regs -> zs_R, call C, reload ----
+SECTION .text
+%macro rwstub 1
+zs_rwstub_ %+ %1:
+    mov [zs_R],eax
+    mov [zs_R+4],ecx
+    mov [zs_R+8],edx
+    mov [zs_R+12],ebx
+    mov [zs_R+16],esi
+    mov [zs_R+20],edi
+    mov [zs_R+24],ebp
+    push dword %1
+    call zs_regw_c
+    add esp,4
+    mov eax,[zs_R]
+    mov ecx,[zs_R+4]
+    mov edx,[zs_R+8]
+    mov ebx,[zs_R+12]
+    mov esi,[zs_R+16]
+    mov edi,[zs_R+20]
+    mov ebp,[zs_R+24]
+    ret
+%endmacro
+%assign zi 0
+%rep RW_COUNT
+    rwstub zi
+%assign zi zi+1
+%endrep
+SECTION .data
+GLOBAL zs_rwstub_tab, zs_rwasm_tab
+zs_rwstub_tab:
+%assign zi 0
+%rep RW_COUNT
+    dd zs_rwstub_ %+ zi
+%assign zi zi+1
+%endrep
+zs_rwasm_tab:
+    RW_LABELS
+SECTION .text
+; ---- read-handler stubs: same, entry id; result AL returned in R.eax ----
+%macro rrstub 1
+zs_rrstub_ %+ %1:
+    mov [zs_R],eax
+    mov [zs_R+4],ecx
+    mov [zs_R+8],edx
+    mov [zs_R+12],ebx
+    mov [zs_R+16],esi
+    mov [zs_R+20],edi
+    mov [zs_R+24],ebp
+    push dword %1
+    call zs_regr_c
+    add esp,4
+    mov eax,[zs_R]
+    mov ecx,[zs_R+4]
+    mov edx,[zs_R+8]
+    mov ebx,[zs_R+12]
+    mov esi,[zs_R+16]
+    mov edi,[zs_R+20]
+    mov ebp,[zs_R+24]
+    ret
+%endmacro
+%assign zi 0
+%rep RR_COUNT
+    rrstub zi
+%assign zi zi+1
+%endrep
+SECTION .data
+GLOBAL zs_rrstub_tab, zs_rrasm_tab
+zs_rrstub_tab:
+%assign zi 0
+%rep RR_COUNT
+    dd zs_rrstub_ %+ zi
+%assign zi zi+1
+%endrep
+zs_rrasm_tab:
+    RR_LABELS
+SECTION .text
+%endif
