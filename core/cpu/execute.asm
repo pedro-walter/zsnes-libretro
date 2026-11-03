@@ -1881,7 +1881,7 @@ NEWSYM NextLineCache, db 0
 
 SECTION .text
 
-Donextlinecache:
+NEWSYM Donextlinecache
     cmp word[curypos],0
     je .nocache
     mov ax,[resolutn]
@@ -1975,7 +1975,7 @@ Donextlinecache:
 
 SECTION .data
 
-SpeedHackSafeTable
+NEWSYM SpeedHackSafeTable
        db 1,0,1,0,0,0,1,0,1,0,1,1,0,0,0,0
        db 0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0
        db 0,0,0,0,0,0,1,0,1,0,1,1,0,0,1,0
@@ -2070,7 +2070,7 @@ NEWSYM execloop
 .startagain
    call dword near [edi+ebx*4]
 .cpuover
-   jmp cpuover
+   jmp cpuover_sh
 .sound
    mov edi,[tableadc+ebx*4]
 %ifdef OPENSPC
@@ -2101,7 +2101,7 @@ NEWSYM execloop
    jc .cpuovers
    call dword near [edi+ebx*4]
 .cpuovers
-   jmp cpuover
+   jmp cpuover_sh
 
 
 
@@ -3730,6 +3730,74 @@ NEWSYM pexecs
    mov bl,[esi]
    inc esi
    jmp execloop.startagain
+
+
+%ifdef __LIBRETRO__
+EXTSYM zs_R,zs_sched_c
+SECTION .bss
+zs_sched_code resd 1
+SECTION .text
+; C scheduler entry: see core/cpu/schedc.c
+NEWSYM cpuover_sh
+    mov [zs_R],eax
+    mov [zs_R+4],ecx
+    mov [zs_R+8],edx
+    mov [zs_R+12],ebx
+    mov [zs_R+16],esi
+    mov [zs_R+20],edi
+    mov [zs_R+24],ebp
+    call zs_sched_c
+    mov [zs_sched_code],eax
+    mov eax,[zs_R]
+    mov ecx,[zs_R+4]
+    mov edx,[zs_R+8]
+    mov ebx,[zs_R+12]
+    mov esi,[zs_R+16]
+    mov edi,[zs_R+20]
+    mov ebp,[zs_R+24]
+    mov eax,[zs_sched_code]
+    cmp eax,7
+    je cpuover
+    xor ebx,ebx
+    cmp eax,0
+    je .exec
+    cmp eax,1
+    je switchtovirq
+    cmp eax,2
+    je switchtonmi
+    cmp eax,3
+    je pexecs
+    cmp eax,4
+    je exitloop
+    cmp eax,5
+    je exitloop2
+    jmp endprog
+.exec
+    xor ecx,ecx
+    mov bl,[esi]
+    inc esi
+    jmp execloop.startagain
+%else
+cpuover_sh:
+    jmp cpuover
+%endif
+
+
+%ifdef __LIBRETRO__
+; reference copy of the ProcessIRQStuff macro for the scheduler differential fuzz:
+; int zs_irq_ref(int p) -> 1 if the macro would jump to .virq
+NEWSYM zs_irq_ref
+    pushad
+    mov edx,[esp+36]
+    ProcessIRQStuff
+    popad
+    xor eax,eax
+    ret
+.virq
+    popad
+    mov eax,1
+    ret
+%endif
 
 NEWSYM pexecs2
 .sloop

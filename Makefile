@@ -17,7 +17,7 @@ ASM := $(addprefix chips/,sfxproc fxemu2 dsp1proc fxemu2b fxemu2c fxtable sa1pro
        $(addprefix linux/,copyvwin sdlintrf) \
        $(addprefix dos/,debug joy modemrtn vesa2 initvid sw gppro vesa12) \
        endmem init ui vcache
-CSRC := linux/zfilew linux/ztcp linux/zipxw chips/dsp1emu chips/seta10 chips/sdd1emu cpu/executec cpu/spc700c cpu/dspc cpu/dspw cpu/cpuc cpu/dmac cfgload initc uic patch version \
+CSRC := linux/zfilew linux/ztcp linux/zipxw chips/dsp1emu chips/seta10 chips/sdd1emu cpu/executec cpu/spc700c cpu/dspc cpu/dspw cpu/cpuc cpu/dmac cpu/schedc cfgload initc uic patch version \
         effects/burn effects/water effects/smoke
 CXXSRC :=
 
@@ -116,4 +116,6 @@ cpufuzz: all harness
 .PHONY: cpufuzz
 hdmafuzz: all harness
 	HARNESS_DIR=$(abspath $(B)) $(B)/harness $(B)/zsnes_libretro.so "$(ROM)" -f 300 -H $(or $(N),100000) 2>&1 | grep -E "hdma fuzz"
-.PHONY: hdmafuzz
+schedfuzz: all harness
+	HARNESS_DIR=$(abspath $(B)) $(B)/harness $(B)/zsnes_libretro.so "$(ROM)" -f 300 -I $(or $(N),1000000) 2>&1 | grep -E "sched fuzz|irq mismatch"
+.PHONY: hdmafuzz schedfuzz
