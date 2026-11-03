@@ -400,7 +400,22 @@ static int zs_cpu_op_inner(u32 op, u32 var)
                 if (!w) { u8 c = XA8, v = (u8)R.eax; nz8((u8)(c - v)); flagc = (c < v) ? 0 : 0xFF; }
                 else { u16 c = XA16, v = (u16)R.eax; nz16((u16)(c - v)); flagc = (c < v) ? 0 : 0xFF; }
                 return 1;
-            case 3: {                                           /* ADC (binary) */
+            case 3: if (DL & 0x08) {                           /* ADC (decimal): run the real x86 DAA, like the asm */
+                u8 clo = (u8)flagc, o, k;
+                u8 a_lo = XA8, a_hi = ((u8 *)&xa)[1], vl = (u8)R.eax, vh = (u8)(R.eax >> 8);
+                if (!w) {
+                    __asm__ volatile("addb %[c],%[c]\n\tmovb %[al],%%al\n\tadcb %[vl],%%al\n\tdaa\n\tmovb %%al,%[al]\n\tseto %[o]\n\tsetc %[k]"
+                                     : [c] "+q"(clo), [al] "+m"(a_lo), [o] "=q"(o), [k] "=q"(k) : [vl] "m"(vl) : "al", "cc");
+                    XA8 = a_lo; flagnz = (u32)a_lo << 8;
+                } else {
+                    __asm__ volatile("addb %[c],%[c]\n\tmovb %[al],%%al\n\tadcb %[vl],%%al\n\tdaa\n\tmovb %%al,%[al]\n\t"
+                                     "movb %[ah],%%al\n\tadcb %[vh],%%al\n\tdaa\n\tmovb %%al,%[ah]\n\tseto %[o]\n\tsetc %[k]"
+                                     : [c] "+q"(clo), [al] "+m"(a_lo), [ah] "+m"(a_hi), [o] "=q"(o), [k] "=q"(k) : [vl] "m"(vl), [vh] "m"(vh) : "al", "cc");
+                    XA8 = a_lo; ((u8 *)&xa)[1] = a_hi; set_cx(XA16); flagnz = R.ecx;
+                }
+                flago = (flago & ~0xFFu) | o; flagc = k ? 0xFF : 0;
+                return 1;
+            } else {                                          /* ADC (binary) */
                 u32 cin = (flagc & 0x80) ? 1 : 0, o, k, sres;
                 if (!w) {
                     u8 a = XA8, v = (u8)R.eax; sres = (u32)a + v + cin;
@@ -414,7 +429,21 @@ static int zs_cpu_op_inner(u32 op, u32 var)
                 flago = (flago & ~0xFFu) | o; flagc = k ? 0xFF : 0;
                 return 1;
             }
-            case 7: {                                           /* SBC (binary) */
+            case 7: if (DL & 0x08) {                           /* SBC (decimal) */
+                u8 clo = (u8)flagc, o, k;
+                u8 a_lo = XA8, a_hi = ((u8 *)&xa)[1], vl = (u8)R.eax, vh = (u8)(R.eax >> 8);
+                if (!w) {
+                    __asm__ volatile("cmpb $1,%[c]\n\tmovb %[al],%%al\n\tsbbb %[vl],%%al\n\tdas\n\tmovb %%al,%[al]\n\tseto %[o]\n\tsetc %[k]"
+                                     : [c] "+q"(clo), [al] "+m"(a_lo), [o] "=q"(o), [k] "=q"(k) : [vl] "m"(vl) : "al", "cc");
+                    XA8 = a_lo; flagnz = (u32)a_lo << 8; flago = (flago & ~0xFFu) | o; flagc = k ? 0 : 0xFF;
+                } else {
+                    __asm__ volatile("cmpb $1,%[c]\n\tmovb %[al],%%al\n\tsbbb %[vl],%%al\n\tdas\n\tmovb %%al,%[al]\n\t"
+                                     "movb %[ah],%%al\n\tsbbb %[vh],%%al\n\tdas\n\tmovb %%al,%[ah]\n\tcmc\n\tseto %[o]\n\tsetc %[k]"
+                                     : [c] "+q"(clo), [al] "+m"(a_lo), [ah] "+m"(a_hi), [o] "=q"(o), [k] "=q"(k) : [vl] "m"(vl), [vh] "m"(vh) : "al", "cc");
+                    XA8 = a_lo; ((u8 *)&xa)[1] = a_hi; set_cx(XA16); flagnz = R.ecx; flago = (flago & ~0xFFu) | o; flagc = k ? 0xFF : 0;
+                }
+                return 1;
+            } else {                                          /* SBC (binary) */
                 u32 bin = (flagc & 0xFF) ? 0 : 1, o, k, sres;
                 if (!w) {
                     u8 a = XA8, v = (u8)R.eax; sres = (u32)a - v - bin;
@@ -933,7 +962,6 @@ HID __attribute__((force_align_arg_pointer)) void zs_cpu_install(void)
         if (!zs_cpu_ported[op] || mode == 0) continue;
         for (v = 0; v < 2; v++)
             for (t = 0; t < 8; t++) {
-                if (dec && t >= 4) continue;           /* decimal mode ADC/SBC stay asm */
                 sets[v][t][op] = v ? zs_cstub_c_tab[op] : zs_cstub_b_tab[op];
             }
     }
@@ -969,7 +997,7 @@ static void fuzz_setup(u32 op, u8 *code)
     int dec;
     handles(op, &dec);
     P = frnd() & 0xFF;
-    P &= ~0x08u; if (!dec && (frnd() & 1)) P |= 0x08;                  /* D */
+    P &= ~0x08u; if (frnd() & 1) P |= 0x08;                            /* D */
     if (emul) P |= 0x30;
     memset(code - 512, 0xEA, 1024);
     for (i = 0; i < 4; i++) code[i] = (u8)frnd();
