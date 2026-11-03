@@ -23,7 +23,7 @@ $(O)/lift_data.o: $(L)/lift_data.bin
 	printf '.section .rodata\n.globl lift_data_bin\nlift_data_bin:\n.globl _lift_data_bin\n_lift_data_bin:\n.incbin "$(L)/lift_data.bin"\n.globl lift_data_bin_len\nlift_data_bin_len:\n.globl _lift_data_bin_len\n_lift_data_bin_len:\n.long %d\n' $$(stat -c %s $(L)/lift_data.bin) > $(O)/lift_data.s
 	$(CC) $(ASFLAGS) -c -o $@ $(O)/lift_data.s
 
-FPX := $(if $(filter 64,$(BITS)),-mfpmath=387,)
+FPX :=
 # hand-written C overriding lifted asm functions (tools/lift/overrides.txt); plain C, guest data via absolute symbols
 HSRCS := $(wildcard core/zl/*.c)
 HFIXED := $(patsubst core/zl/%.c,$(O)/h/%.c,$(HSRCS))
@@ -45,7 +45,7 @@ $(O)/c/cfixed.stamp: $(CSRCS) $(L)/lift_cvars.txt tools/lift/cfix.py
 	@mkdir -p $(O)/c
 	python3 tools/lift/cfix.py $(L)/lift_cvars.txt $(O)/c $(CSRCS)
 	touch $@
-# DSP-1 uses doubles; the original ran on x87 (extended intermediates), so match that on x86-64
+# (DSP-1 doubles: -ffp-contract=off keeps FMA out so every platform rounds alike; no x87 needed)
 $(O)/c/dsp1emu.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
 	$(CC) $(CFL) $(FPX) -include tools/lift/lift_cdefs.h -I$(dir $(firstword $(CSRCS))) -Icore/linux -Icore/chips -Icore/cpu -Icore/effects -c -o $@ $(O)/c/dsp1emu.c
 $(O)/c/%.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
@@ -80,7 +80,7 @@ dist64:
 WINFLAGS := -Ilibretro/shim -include sys/stat.h -include dirent.h
 # cross builds (need gcc-mingw-w64 / gcc-aarch64-linux-gnu / gcc-arm-linux-gnueabihf):  make -f Makefile.lift distwin64 distarm64 ...
 distwin64:
-	$(MAKE) -f Makefile.lift CC=x86_64-w64-mingw32-gcc BITS=64 FPX=-mfpmath=387 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win64 -j8
+	$(MAKE) -f Makefile.lift CC=x86_64-w64-mingw32-gcc BITS=64 FPX= 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win64 -j8
 	mkdir -p dist && cp build/win64/zsnes_lifted.so dist/zsnes_libretro_win64.dll
 distwin32:
 	$(MAKE) -f Makefile.lift SYMLD=$(L)/lift_syms_u.ld CC=i686-w64-mingw32-gcc BITS=32 FPX= 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win32 -j8
