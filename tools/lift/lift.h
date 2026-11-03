@@ -28,6 +28,7 @@ extern const unsigned lift_ovr_ids[]; extern const unsigned short lift_ovr_flags
 void zl_orig(u32 id);
 void zl_mcall(u32 id);
 void zl_dual_protect(void *p, unsigned long n);
+extern const unsigned lift_text_id[]; extern const char *const lift_text_name[]; extern const int lift_text_count;
 extern const unsigned lift_sym_addr[]; extern const char *const lift_sym_name[]; extern const int lift_sym_count;
 void zl_dual_ignore(u32 addr, u32 len);       /* exclude a range from differential comparison */
 void zl_dual_ignore_sym(const char *name);

@@ -159,8 +159,10 @@ static void dual_restore(u8 *arena, const u8 *src, u32 used)
     memcpy(arena, src, lo); memcpy(arena + hi, src + hi, used - hi);
 }
 static int ignored(u32 a) { if (a >= prot_lo && a < prot_hi) return 1; int i; for (i = 0; i < ndual_ign; i++) if (a >= dual_ign[i].lo && a < dual_ign[i].hi) return 1; return 0; }
+static int dual_busy;
 static void dual_run(u32 k)
 {
+    dual_busy = 1;
     u32 used = (heap_ptr - LIFT_ARENA_BASE + 15u) & ~15u, i, ndiff = 0;
     size_t need = (size_t)used + DSTK;
     u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE, *stk = arena + LIFT_ARENA_SIZE - DSTK;
@@ -204,6 +206,7 @@ static void dual_run(u32 k)
         }
     }
     LG.esp -= 4;     /* give lift_run its return address back */
+    dual_busy = 0;
 }
 static int dual_wanted(u32 k)
 {
@@ -212,15 +215,54 @@ static int dual_wanted(u32 k)
         dual_only = getenv("ZL_DUAL_ONLY"); if (getenv("ZL_DUAL_MAX")) dual_max = atoi(getenv("ZL_DUAL_MAX"));
         if (dual_rate > 0) atexit(dual_summary);
     }
-    if (dual_rate <= 0 || lift_orig || (lift_ovr_flags[k] & 1)) return 0;
+    if (dual_rate <= 0 || lift_orig || dual_busy || (lift_ovr_flags[k] & 1)) return 0;
     if (dual_only && !strstr(lift_ovr_names[k], dual_only)) return 0;
     { static unsigned long n[4096]; return (n[k]++ % (unsigned)dual_rate) == 0; }
 }
 
 static unsigned long long prof[128];
+#define PROFN 8192
+static struct { u32 pc; unsigned long long n; } prof2[PROFN];
+static void prof_pc(u32 pc) { u32 h = (pc * 2654435761u) >> 19; for (;;) { if (prof2[h].pc == pc || !prof2[h].n) { prof2[h].pc = pc; prof2[h].n++; return; } h = (h + 1) & (PROFN - 1); } }
+static const char *text_name(u32 pc, u32 *off)
+{
+    int lo = 0, hi = lift_text_count - 1, r = -1;
+    while (lo <= hi) { int m = (lo + hi) / 2; if (lift_text_id[m] <= pc) { r = m; lo = m + 1; } else hi = m - 1; }
+    if (r < 0) { *off = 0; return "?"; }
+    *off = pc - lift_text_id[r]; return lift_text_name[r];
+}
+static int prof_cmp(const void *a, const void *b) { unsigned long long x = ((const typeof(prof2[0]) *)a)->n, y = ((const typeof(prof2[0]) *)b)->n; return x < y ? 1 : x > y ? -1 : 0; }
 __attribute__((destructor)) static void prof_dump(void)
-{ if (!getenv("LIFT_PROF")) return; for (int i = 0; i < 128; i++) if (prof[i]) fprintf(stderr, "PROF %s %llu\n", oname((u32)i << 21), prof[i]); }
+{
+    const char *e = getenv("LIFT_PROF"); if (!e) return;
+    for (int i = 0; i < 128; i++) if (prof[i]) fprintf(stderr, "PROF %s %llu\n", oname((u32)i << 21), prof[i]);
+    if (atoi(e) >= 2) { int i; qsort(prof2, PROFN, sizeof prof2[0], prof_cmp); for (i = 0; i < 60 && prof2[i].n; i++) { u32 off; const char *n = text_name(prof2[i].pc, &off); fprintf(stderr, "PROFPC %s+0x%x %llu\n", n, off, prof2[i].n); } }
+}
 int lift_orig, lift_once;
+/* code id of an overridden asm label -> override index (so dispatch can skip the lifted guard) */
+#define OVH 4096
+static short ovr_tab[OVH];
+static int ovr_built;
+static void ovr_build(void)
+{
+    int k;
+    memset(ovr_tab, 0xFF, sizeof ovr_tab);
+    for (k = 0; k < lift_ovr_count; k++) {
+        u32 id = lift_ovr_ids[k], h;
+        if (!id) continue;
+        h = (id * 2654435761u) >> 20;
+        while (ovr_tab[h] >= 0) h = (h + 1) & (OVH - 1);
+        ovr_tab[h] = (short)k;
+    }
+    ovr_built = 1;
+}
+static inline int ovr_find(u32 id)
+{
+    u32 h = (id * 2654435761u) >> 20;
+    for (;;) { short k = ovr_tab[h]; if (k < 0) return -1; if (lift_ovr_ids[k] == id) return k; h = (h + 1) & (OVH - 1); }
+}
+static int prof_on;
+__attribute__((constructor)) static void prof_init(void) { const char *e = getenv("LIFT_PROF"); prof_on = e && atoi(e) >= 2; }
 /* call a guest function with the registers in LG (results stay in LG) */
 void zl_mcall(u32 id) { LG.esp -= 4; M32(LG.esp) = SENT_ID; lift_run(id); }
 void zl_orig(u32 id) { LG.esp -= 4; M32(LG.esp) = SENT_ID; lift_orig++; lift_run(id); lift_orig--; }
@@ -241,10 +283,22 @@ u32 lift_run(u32 pc)
             pc = M32(LG.esp); LG.esp += 4;
             continue;
         }
+        if (!lift_orig && !lift_once && lift_ovr_count) {
+            int k;
+            if (!ovr_built) ovr_build();
+            k = ovr_find(pc);
+            if (k >= 0) {
+                u32 nx;
+                if (dual_wanted((u32)k)) { dual_run((u32)k); nx = 0; } else nx = lift_ovr_fns[k]();
+                if (nx) { pc = nx; continue; }
+                pc = M32(LG.esp); LG.esp += 4;
+                continue;
+            }
+        }
         ring[ringi++ & 63] = pc;
         if (o >= 128 || !lift_objtab[o]) die("dispatch into non-lifted code 0x%x (%s+0x%x)", pc, oname(pc), pc & 0x1FFFFF);
         ring[ringi++ & 63] = pc;
-        prof[o]++;
+        prof[o]++; if (prof_on) prof_pc(pc);
         pc = lift_objtab[o](pc);
     }
 }
