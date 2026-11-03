@@ -75,7 +75,7 @@ static void wav_header(FILE *f, uint32_t bytes) {
     fwrite("data", 1, 4, f); fwrite(&bytes, 4, 1, f);
 }
 
-static int resetf = -1, fuzz = 0, dspfuzz = 0, dspwfuzz = 0, cpufuzz = 0;
+static int resetf = -1, fuzz = 0, dspfuzz = 0, dspwfuzz = 0, cpufuzz = 0, hdmafuzz = 0;
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: %s core.so rom [-f N] [-s a,b] [-o prefix] [-w wav] [-i f:mask,...]\n", argv[0]); return 2; }
     int frames = 120; const char *trace = NULL, *tracepath = NULL; const char *shots = "", *prefix = "shot", *wavp = NULL, *inputs = "";
@@ -92,6 +92,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "-D")) dspfuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-W")) dspwfuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-C")) cpufuzz = atoi(argv[i+1]);
+        else if (!strcmp(argv[i], "-H")) hdmafuzz = atoi(argv[i+1]);
     }
     void *h = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL);
     if (!h) { fprintf(stderr, "dlopen: %s\n", dlerror()); return 1; }
@@ -122,6 +123,7 @@ int main(int argc, char **argv) {
             uint32_t c = last_rgb ? crc32(0, last_rgb, lw * lh * 3) : 0; printf("frame %d: %ux%u crc %08x -> %s\n", f, lw, lh, c, path); } }
             s += n ? n : 1; if (*s == ',') s++; }
     }
+    if (hdmafuzz) { unsigned (*fz)(unsigned, unsigned) = (unsigned (*)(unsigned, unsigned))dlsym(h, "zs_hdma_fuzz"); if (fz) { unsigned m = fz(hdmafuzz, 99); printf("hdma fuzz mismatches: %u\n", m); } }
     if (cpufuzz) { unsigned (*fz)(unsigned, unsigned) = (unsigned (*)(unsigned, unsigned))dlsym(h, "zs_cpu_fuzz"); if (fz) { unsigned m = fz(cpufuzz, 31337); printf("cpu fuzz mismatches: %u\n", m); } }
     if (dspwfuzz) { unsigned (*fz)(unsigned, unsigned) = (unsigned (*)(unsigned, unsigned))dlsym(h, "zs_dspw_fuzz"); if (fz) { unsigned m = fz(dspwfuzz, 4242); printf("dspw fuzz mismatches: %u\n", m); } }
     if (dspfuzz) { unsigned (*fz)(unsigned, unsigned) = (unsigned (*)(unsigned, unsigned))dlsym(h, "zs_dsp_fuzz"); if (fz) { unsigned m = fz(dspfuzz, 777); printf("dsp fuzz mismatches: %u\n", m); } }

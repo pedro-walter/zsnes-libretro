@@ -171,3 +171,83 @@ zs_cpu_run:
     mov [eax+24],ecx
     popad
     ret
+
+; ---- DMA/HDMA differential fuzz support: recording read/write handlers --------------------------
+SECTION .bss
+GLOBAL zs_fz_log, zs_fz_n, zs_fz_mem
+zs_fz_log resd 8*4096
+zs_fz_n resd 1
+zs_fz_mem resb 65536+8
+SECTION .text
+
+%macro FZLOG 1
+    pushfd
+    push edx
+    push edi
+    mov edi,[zs_fz_n]
+    cmp edi,4096
+    jae %%full
+    inc dword[zs_fz_n]
+    shl edi,5
+    mov dword[zs_fz_log+edi],%1
+    mov [zs_fz_log+edi+4],eax
+    mov [zs_fz_log+edi+8],ecx
+    mov [zs_fz_log+edi+12],ebx
+    mov [zs_fz_log+edi+16],esi
+    mov [zs_fz_log+edi+20],edx
+    mov dword[zs_fz_log+edi+24],0
+    mov dword[zs_fz_log+edi+28],0
+%%full:
+    pop edi
+    pop edx
+    popfd
+%endmacro
+
+GLOBAL zs_fz_rd8, zs_fz_rd16
+zs_fz_rd8:
+    FZLOG 1
+    push ebx
+    and ebx,0FFh
+    imul ebx,ebx,31
+    add ebx,ecx
+    and ebx,0FFFFh
+    mov al,[zs_fz_mem+ebx]
+    pop ebx
+    xor ebx,ebx
+    ret
+zs_fz_rd16:
+    FZLOG 2
+    push ebx
+    and ebx,0FFh
+    imul ebx,ebx,31
+    add ebx,ecx
+    and ebx,0FFFFh
+    mov ax,[zs_fz_mem+ebx]
+    pop ebx
+    xor ebx,ebx
+    ret
+
+%macro FZWR 2
+GLOBAL %1
+%1:
+    FZLOG %2
+    ret
+%endmacro
+FZWR zs_fz_wr0,16
+FZWR zs_fz_wr1,17
+FZWR zs_fz_wr2,18
+FZWR zs_fz_wr3,19
+FZWR zs_fz_wr4,20
+FZWR zs_fz_wr5,21
+FZWR zs_fz_wr6,22
+FZWR zs_fz_wr7,23
+
+; void zs_fz_callasm(void *fn, uint32 eax): call an asm routine preserving all C registers
+GLOBAL zs_fz_callasm
+zs_fz_callasm:
+    pushad
+    mov ecx,[esp+36]
+    mov eax,[esp+40]
+    call ecx
+    popad
+    ret

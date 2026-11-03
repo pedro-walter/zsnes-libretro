@@ -114,3 +114,6 @@ dspwfuzz: all harness
 cpufuzz: all harness
 	HARNESS_DIR=$(abspath $(B)) $(B)/harness $(B)/zsnes_libretro.so "$(ROM)" -f 300 -C $(or $(N),300000) 2>&1 | grep -E "cpu fuzz"
 .PHONY: cpufuzz
+hdmafuzz: all harness
+	HARNESS_DIR=$(abspath $(B)) $(B)/harness $(B)/zsnes_libretro.so "$(ROM)" -f 300 -H $(or $(N),100000) 2>&1 | grep -E "hdma fuzz"
+.PHONY: hdmafuzz

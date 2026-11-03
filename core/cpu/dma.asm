@@ -811,7 +811,7 @@ NEWSYM hdmarestart, resb 1
 
 section .text
 
-NEWSYM reg420Cw
+NEWSYM reg420Cw_asm
 
     mov [curhdma],al
     mov bx,[resolutn]
@@ -899,9 +899,9 @@ NEWSYM reg420Cw
     ret
 
 ; HDMA enable register
-NEWSYM starthdma
+NEWSYM starthdma_asm
     mov al,[curhdma]
-NEWSYM startnexthdma
+NEWSYM startnexthdma_asm
     mov [nexthdma],al
     cmp al,0
     je near .nohdma
@@ -1285,7 +1285,7 @@ section .bss
 .dest resd 1
 section .text
 
-NEWSYM exechdma
+NEWSYM exechdma_asm
     cmp byte[hdmarestart],1
     je near exechdmars
     mov al,[nexthdma]
@@ -1360,7 +1360,7 @@ NEWSYM exechdma
 .nohdma
     ret
 
-NEWSYM exechdmars
+NEWSYM exechdmars_asm
     mov al,[nexthdma]
     cmp al,0
     je near .nohdma
@@ -1443,3 +1443,48 @@ NEWSYM exechdmars
     ret
 
 
+
+
+%ifdef __LIBRETRO__
+EXTSYM zs_reg420Cw_c,zs_starthdma_c,zs_startnexthdma_c,zs_exechdma_c,zs_exechdmars_c
+NEWSYM reg420Cw
+    cmp dword[zs_dma_use_asm],0
+    jne reg420Cw_asm
+    pushad
+    movzx eax,al
+    push eax
+    call zs_reg420Cw_c
+    add esp,4
+    popad
+    ret
+NEWSYM starthdma
+    cmp dword[zs_dma_use_asm],0
+    jne starthdma_asm
+    pushad
+    call zs_starthdma_c
+    popad
+    ret
+NEWSYM startnexthdma
+    cmp dword[zs_dma_use_asm],0
+    jne startnexthdma_asm
+    pushad
+    push eax
+    call zs_startnexthdma_c
+    add esp,4
+    popad
+    ret
+NEWSYM exechdma
+    cmp dword[zs_dma_use_asm],0
+    jne exechdma_asm
+    pushad
+    call zs_exechdma_c
+    popad
+    ret
+NEWSYM exechdmars
+    cmp dword[zs_dma_use_asm],0
+    jne exechdmars_asm
+    pushad
+    call zs_exechdmars_c
+    popad
+    ret
+%endif
