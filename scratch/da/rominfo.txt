@@ -1,0 +1,6 @@
+This is the info for the last game you ran.
+
+File: S).srt Fighter Alpha 2 (USA).srm Header: No
+STREET FIGHTER ALPHA    TYPE:S-DD1      
+INTERLEAVED:No    BANK:Lo    CHKSUM:OK  
+VIDEO:NTSC                CRC32:9C59DDFF

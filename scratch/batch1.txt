@@ -1,0 +1,22 @@
+[F-Zero (USA).sfc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc b3efa35c 
+[F-Zero (USA).sfc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc b1fafa60 
+[Pilotwings (USA).sfc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc bc11c912 
+[Pilotwings (USA).sfc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc f1f5bc7b 
+[Star Fox (USA) (Rev 2).sfc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc aa6ba12e 
+[Star Fox (USA) (Rev 2).sfc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 323ea4eb 
+[Street Fighter Alpha 2 (USA).sfc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 887bf27f 
+[Street Fighter Alpha 2 (USA).sfc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 69662587 
+[Super Mario Kart (USA).sfc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 403f5d8b 
+[Super Mario Kart (USA).sfc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 6652adcf 
+[Super Mario RPG - Legend of the Seven Stars (USA).sfc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc f9b756c0 
+[Super Mario RPG - Legend of the Seven Stars (USA).sfc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc e02a1d50 
+[top-gear-randomizer-0.5.sfc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 1f7eb148 
+[top-gear-randomizer-0.5.sfc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 76f4cc05 
+[Top Gear USA Randomizer beta1.sfc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 1e754bd0 
+[Top Gear USA Randomizer beta1.sfc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc d29c435f 
+[Top Gear (E) [!].smc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3840000 frames crc 356ee1d6 
+[Top Gear (E) [!].smc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3840000 frames crc 458d5624 
+[Top Gear TGC Rom (E) [!].smc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3840000 frames crc cbb97cf7 
+[Top Gear TGC Rom (E) [!].smc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3840000 frames crc e762de23 
+[Top Gear (USA) CPU NItro.smc seed 11] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 99ba9224 
+[Top Gear (USA) CPU NItro.smc seed 12] IDENTICAL (121 lines) done: 6000 frames, audio 3194368 frames crc 86222429 

@@ -1,0 +1,6 @@
+This is the info for the last game you ran.
+
+File: Pilotwings (USA).srm Header: No
+PILOTWINGS              TYPE:DSP-1      
+INTERLEAVED:No    BANK:Lo    CHKSUM:OK  
+VIDEO:NTSC                CRC32:266C44ED

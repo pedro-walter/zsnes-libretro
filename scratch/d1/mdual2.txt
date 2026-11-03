@@ -1,0 +1,83 @@
+av: 256x224 @ 60.0988 fps, 32000 Hz
+lift: fatal: bad dispatch target 0x7824f3d (video/newgfx16.ao+0x24f3d)
+recent entries (old->new):
+  06200ec0 video/makevid.ao+0xec0
+  06200ec0 video/makevid.ao+0xec0
+  05e00377 video/makev16b.ao+0x377
+  05e00377 video/makev16b.ao+0x377
+  0780036b video/newgfx16.ao+0x36b
+  0780036b video/newgfx16.ao+0x36b
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e8 cpu/execute.ao+0x16e8
+  01e016e8 cpu/execute.ao+0x16e8
+  06200ec0 video/makevid.ao+0xec0
+  06200ec0 video/makevid.ao+0xec0
+  05e00377 video/makev16b.ao+0x377
+  05e00377 video/makev16b.ao+0x377
+  0780036b video/newgfx16.ao+0x36b
+  0780036b video/newgfx16.ao+0x36b
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e8 cpu/execute.ao+0x16e8
+  01e016e8 cpu/execute.ao+0x16e8
+  06200ec0 video/makevid.ao+0xec0
+  06200ec0 video/makevid.ao+0xec0
+  05e00377 video/makev16b.ao+0x377
+  05e00377 video/makev16b.ao+0x377
+  0780036b video/newgfx16.ao+0x36b
+  0780036b video/newgfx16.ao+0x36b
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e8 cpu/execute.ao+0x16e8
+  01e016e8 cpu/execute.ao+0x16e8
+  06200ec0 video/makevid.ao+0xec0
+  06200ec0 video/makevid.ao+0xec0
+  05e00377 video/makev16b.ao+0x377
+  05e00377 video/makev16b.ao+0x377
+  0780036b video/newgfx16.ao+0x36b
+  0780036b video/newgfx16.ao+0x36b
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e8 cpu/execute.ao+0x16e8
+  01e016e8 cpu/execute.ao+0x16e8
+  06200ec0 video/makevid.ao+0xec0
+  06200ec0 video/makevid.ao+0xec0
+  05e00377 video/makev16b.ao+0x377
+  05e00377 video/makev16b.ao+0x377
+  0780036b video/newgfx16.ao+0x36b
+  0780036b video/newgfx16.ao+0x36b
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e8 cpu/execute.ao+0x16e8
+  01e016e8 cpu/execute.ao+0x16e8
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e8 cpu/execute.ao+0x16e8
+  01e016e8 cpu/execute.ao+0x16e8
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e5 cpu/execute.ao+0x16e5
+  01e016e8 cpu/execute.ao+0x16e8
+  01e016e8 cpu/execute.ao+0x16e8
+  07600f1a video/newgfx.ao+0xf1a
+  07600f1a video/newgfx.ao+0xf1a
+  07801568 video/newgfx16.ao+0x1568
+  07801568 video/newgfx16.ao+0x1568
+  07824f3d video/newgfx16.ao+0x24f3d
+  07824f3d video/newgfx16.ao+0x24f3d
+esp=3ffffee0 eax=00000000 ebx=000000e0 ecx=00000000 edx=00000026 esi=313fd068 edi=3009dae0 ebp=30057e4f
+
+ZSNES v1.42 (c) 1997-2005, ZSNES Team
+
+Be sure to check http://www.zsnes.com/ for the latest version.
+Please report crashes to zsnes-devel@lists.sourceforge.net.
+
+ZSNES is written by the ZSNES Team (See AUTHORS.TXT)
+ZSNES comes with ABSOLUTELY NO WARRANTY.  This is free software,
+and you are welcome to redistribute it under certain conditions;
+please read 'LICENSE' thoroughly before doing so.
+
+Use ZSNES -? for command line definitions.
+
+File opened successfully!
+done: 600 frames, audio 319360 frames crc b1ffebee

@@ -1,0 +1,6 @@
+This is the info for the last game you ran.
+
+File: Super Mario RPG - Lege)d of the Seven Stars (USA).srm Header: No
+SUPER MARIO RPG         TYPE:SA-1       
+INTERLEAVED:No    BANK:Lo    CHKSUM:OK  
+VIDEO:NTSC                CRC32:1B8A0625

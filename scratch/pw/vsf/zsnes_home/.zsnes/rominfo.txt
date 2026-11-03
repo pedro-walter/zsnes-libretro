@@ -1,0 +1,6 @@
+This is the info for the last game you ran.
+
+File: Star Fox (USA) (Rev 2).srm Header: No
+STAR FOX                TYPE:SUPER FX   
+INTERLEAVED:No    BANK:Lo    CHKSUM:OK  
+VIDEO:NTSC                CRC32:8FC4E6D0

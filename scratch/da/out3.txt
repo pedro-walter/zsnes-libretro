@@ -1,0 +1,17 @@
+av: 256x224 @ 60.0988 fps, 32000 Hz
+DUAL newengine16b                 checked 1829  mismatching 0
+
+ZSNES v1.42 (c) 1997-2005, ZSNES Team
+
+Be sure to check http://www.zsnes.com/ for the latest version.
+Please report crashes to zsnes-devel@lists.sourceforge.net.
+
+ZSNES is written by the ZSNES Team (See AUTHORS.TXT)
+ZSNES comes with ABSOLUTELY NO WARRANTY.  This is free software,
+and you are welcome to redistribute it under certain conditions;
+please read 'LICENSE' thoroughly before doing so.
+
+Use ZSNES -? for command line definitions.
+
+File opened successfully!
+done: 800 frames, audio 425856 frames crc 1b767a70

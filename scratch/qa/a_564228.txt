@@ -1,0 +1,16 @@
+frame 100: 256x224 crc 0833ca10 wram 5bdfaf35
+frame 200: 256x224 crc 7a0075d6 wram 92229fd2
+frame 300: 256x224 crc 80daf76c wram 09f602c0
+frame 400: 256x224 crc b43b672e wram e6870068
+frame 500: 256x224 crc 2cc1fee2 wram 7af7cd04
+frame 600: 256x224 crc 94117770 wram 00cb3a33
+frame 700: 256x224 crc 592fb252 wram 6dcf733d
+frame 800: 256x224 crc bb431776 wram 4b82c4e7
+frame 900: 256x224 crc 6bf59f6c wram 5174aed5
+frame 1000: 256x224 crc f04578ba wram 955630ca
+frame 1100: 256x224 crc 6e8d8520 wram 64f4285e
+frame 1200: 256x224 crc de0025c2 wram b1e6634b
+frame 1300: 256x224 crc fdc697e5 wram fc6d9e8d
+frame 1400: 256x224 crc 84c73955 wram aaa47609
+frame 1500: 256x224 crc 0f706df3 wram 5c34295f
+done: 1500 frames, audio 798592 frames crc 0141d999

@@ -1,0 +1,6 @@
+This is the info for the last game you ran.
+
+File: Top Gear (E) [!].srm Header: No
+TOP GEAR                TYPE:NORMAL     
+INTERLEAVED:No    BANK:Lo    CHKSUM:OK  
+VIDEO:PAL                 CRC32:B0150052

@@ -1,0 +1,7 @@
+frame 50: 256x224 crc 22501e6c wram c2c19e9a
+frame 100: 256x224 crc 22501e6c wram dd1911d6
+frame 150: 256x224 crc a73395ff wram a591a562
+frame 200: 256x224 crc 4ee44a44 wram ddb70958
+frame 250: 256x224 crc 3069abc4 wram 7933a5b6
+frame 300: 256x224 crc 3069abc4 wram d3267117
+done: 300 frames, audio 192000 frames crc 19a55d90
