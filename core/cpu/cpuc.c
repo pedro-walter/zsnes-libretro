@@ -21,6 +21,7 @@
 #include <dlfcn.h>
 #include <signal.h>
 #include <setjmp.h>
+#include <stddef.h>
 
 typedef uint8_t u8;
 typedef int8_t s8;
@@ -632,4 +633,125 @@ HID __attribute__((force_align_arg_pointer)) void zs_cpu_install(void)
                 sets[v][t][op] = v ? zs_cstub_c_tab[op] : zs_cstub_b_tab[op];
             }
     }
+}
+
+/* =====================================================================
+ * Differential fuzz: original asm handler vs C stub, same machine state
+ * ===================================================================== */
+extern void zs_cpu_run(void *entry, const regs_t *in, regs_t *out);
+extern void *zs_capture_tab[256];
+extern u8 xe, xp;
+extern u32 curcyc;
+
+typedef struct { void *p; size_t n; const char *name; } vreg_t;
+static u32 frng = 1;
+static u32 frnd(void) { frng ^= frng << 13; frng ^= frng >> 17; frng ^= frng << 5; return frng; }
+
+static const vreg_t vars[] = {
+    { &xa, 4, "xa" }, { &xx, 4, "xx" }, { &xy, 4, "xy" }, { &xs, 4, "xs" }, { &xd, 4, "xd" }, { &xdb, 4, "xdb" }, { &xpb, 4, "xpb" },
+    { &xpc, 2, "xpc" }, { &xe, 1, "xe" }, { &xp, 1, "xp" }, { &flagnz, 4, "flagnz" }, { &flago, 4, "flago" }, { &flagc, 4, "flagc" },
+    { &stackand, 2, "stackand" }, { &stackor, 2, "stackor" }, { &DPageR8, 4, "DPageR8" }, { &DPageR16, 4, "DPageR16" },
+    { &DPageW8, 4, "DPageW8" }, { &DPageW16, 4, "DPageW16" }, { &intrset, 1, "intrset" }, { &doirqnext, 1, "doirqnext" },
+};
+#define NVARS ((int)(sizeof vars / sizeof vars[0]))
+
+static void fuzz_setup(u32 op, u8 *code)
+{
+    u32 P, i;
+    int emul = (frnd() % 8 == 0);
+    int grp = (op >> 5) & 7, lo = op & 0x1F;
+    int longptr = ((op & 3) == 3 && (lo == 0x07 || lo == 0x17)) || 0;
+    int dec;
+    handles(op, &dec);
+    P = frnd() & 0xFF;
+    P &= ~0x08u; if (!dec && (frnd() & 1)) P |= 0x08;                  /* D */
+    if (emul) P |= 0x30;
+    memset(code - 512, 0xEA, 1024);
+    for (i = 0; i < 4; i++) code[i] = (u8)frnd();
+    if (op == 0xD8 || op == 0xF8) memset(code, 0xEA, 4);
+    xa = frnd() & 0xFFFF; xx = frnd() & 0xFFFF; xy = frnd() & 0xFFFF;
+    if (frnd() % 3 == 0) { xx &= 0xFF; xy &= 0xFF; }
+    if (P & 0x10) { xx &= 0xFF; xy &= 0xFF; }
+    if (frnd() % 2) { xx %= 0x600; xy %= 0x600; }
+    else { xx &= 0xFF; xy &= 0xFF; }
+    xd = longptr || frnd() % 2 ? (frnd() % 0x1000) : (0xF000 + frnd() % 0x1000);
+    if (frnd() % 4 == 0) xd &= ~0xFFu;
+    xs = emul ? (0x100 | (frnd() & 0xFF)) : (frnd() % 0x1700);
+    if (frnd() % 6 == 0) xs = (frnd() % 4) * 0xFF;                     /* stack wrap cases */
+    stackand = emul ? 0x1FF : 0xFFFF; stackor = emul ? 0x100 : 0;
+    xe = emul;
+    { static const u8 banks[] = { 0x7E, 0x7F, 0xC0, 0xC1, 0xFF, 0xF0, 0xFE }; xdb = banks[frnd() % sizeof banks]; xpb = 0; }
+    flagnz = (frnd() & 1 ? 0x10000 : 0) | (frnd() & 1 ? 0 : (1 + frnd() % 0xFFFE));
+    flagc = frnd() & 1 ? 0xFF : 0; flago = frnd() & 1 ? 0xFF : 0;
+    if (frnd() % 3 == 0) flagnz = ((frnd() & 0xFF) << 8) | 0;           /* 8-bit style value */
+    P = (P & 0x3C) | (frnd() & 0xC3);                                   /* stale N V Z C bits in dl */
+    xpc = 0; xp = (u8)P;
+    R.edx = (200u << 8) | P;
+    /* long operand banks */
+    { static const u8 lb[] = { 0x7E, 0x7F, 0xC0, 0xFF }; code[2] = lb[frnd() % sizeof lb]; }
+    if (op == 0x5C || op == 0x22) code[2] = 0x7E;
+    update_dpage();
+    if (longptr) {
+        u8 *w = (u8 *)wramdata;
+        u32 a = ((u32)xd + code[0]) & 0xFFFF;                           /* [d] pointer at D+dp (+index applied later) */
+        static const u8 lb[] = { 0x7E, 0x7F, 0xC0, 0xFF };
+        if (a + 3 <= 0x2000) { w[a] = (u8)frnd(); w[a + 1] = (u8)frnd(); w[a + 2] = lb[frnd() % sizeof lb]; }
+    }
+}
+
+unsigned zs_cpu_fuzz(unsigned iters, unsigned seed)
+{
+    u8 *w = (u8 *)wramdata;
+    u8 *snapw = malloc(0x20000), *asmw = malloc(0x20000);
+    u8 *snapv[NVARS], *asmv[NVARS];
+    static u8 codebuf[1024];
+    u8 *code = codebuf + 512;
+    unsigned it, bad = 0, ran = 0;
+    unsigned long perop[256] = { 0 };
+    int v;
+    struct sigaction sa;
+    frng = seed ? seed : 1;
+    for (v = 0; v < NVARS; v++) { snapv[v] = malloc(vars[v].n); asmv[v] = malloc(vars[v].n); }
+    for (it = 0; it < iters; it++) {
+        u32 op;
+        regs_t in, outA, outC;
+        int tidx, k;
+        do { op = frnd() & 0xFF; } while (!zs_cpu_ported[op]);
+        if (it < 20000) op = (u32)(it % 256) , (void)0;
+        if (!zs_cpu_ported[op]) continue;
+        if ((it & 63) == 0) for (k = 0; k < 0x20000; k++) w[k] = (u8)frnd();
+        fuzz_setup(op, code);
+        in.eax = frnd(); in.ecx = frnd() & 0xFFFF; in.edx = R.edx; in.ebx = op;
+        in.esi = (u32)(code);     /* operand bytes follow the opcode: esi points after the opcode */
+        in.edi = (u32)zs_capture_tab; in.ebp = 0;
+        tidx = ((in.edx & 0x08) ? 4 : 0) + ((in.edx & 0x10) ? 2 : 0) + ((in.edx & 0x20) ? 1 : 0);
+        memcpy(snapw, w, 0x20000);
+        for (v = 0; v < NVARS; v++) memcpy(snapv[v], vars[v].p, vars[v].n);
+        zs_cpu_run(zs_orig_tab[0][tidx][op], &in, &outA);
+        memcpy(asmw, w, 0x20000);
+        for (v = 0; v < NVARS; v++) memcpy(asmv[v], vars[v].p, vars[v].n);
+        memcpy(w, snapw, 0x20000);
+        for (v = 0; v < NVARS; v++) memcpy(vars[v].p, snapv[v], vars[v].n);
+        zs_cpu_run(zs_cstub_b_tab[op], &in, &outC);
+        ran++; perop[op]++;
+        {
+            int diff = 0;
+            if (outA.esi != outC.esi || outA.edx != outC.edx || outA.edi != outC.edi || outA.ebx != outC.ebx || outA.ebp != outC.ebp) diff = 1;
+            for (v = 0; v < NVARS; v++) if (memcmp(asmv[v], vars[v].p, vars[v].n)) { diff = 1; if (bad < 20) fprintf(stderr, "cpu fuzz: op %02X (P=%02X xe=%d) var %s: C=%x asm=%x\n", op, (u8)in.edx, xe, vars[v].name, *(u32 *)vars[v].p, *(u32 *)asmv[v]); }
+            if (memcmp(asmw, w, 0x20000)) { diff = 1; if (bad < 20) { int j; for (j = 0; j < 0x20000; j++) if (asmw[j] != w[j]) break; fprintf(stderr, "cpu fuzz: op %02X (P=%02X) WRAM differs at %05X: C=%02x asm=%02x\n", op, (u8)in.edx, j, w[j], asmw[j]); } }
+            if (diff) {
+                bad++;
+                if (bad <= 20) fprintf(stderr, "cpu fuzz: op %02X P=%02X esi: C=%d asm=%d edx: C=%08x asm=%08x edi C=%x asm=%x ebx C=%x asm=%x\n", op, (u8)in.edx, (int)(outC.esi - in.esi), (int)(outA.esi - in.esi), outC.edx, outA.edx, outC.edi, outA.edi, outC.ebx, outA.ebx);
+                /* continue from the asm result */
+                memcpy(w, asmw, 0x20000);
+                for (v = 0; v < NVARS; v++) memcpy(vars[v].p, asmv[v], vars[v].n);
+            }
+        }
+    }
+    {
+        int n = 0, mn = 1 << 30, op;
+        for (op = 0; op < 256; op++) if (zs_cpu_ported[op]) { n++; if (perop[op] < (unsigned long)mn) mn = (int)perop[op]; }
+        fprintf(stderr, "cpu fuzz: %u cases over %d ported opcodes (min %d per opcode), %u mismatching\n", ran, n, mn, bad);
+    }
+    return bad;
 }

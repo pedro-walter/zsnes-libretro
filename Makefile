@@ -109,3 +109,8 @@ dspfuzz: all harness
 dspwfuzz: all harness
 	HARNESS_DIR=$(abspath $(B)) $(B)/harness $(B)/zsnes_libretro.so "$(ROM)" -f 300 -W $(or $(N),300000) 2>&1 | grep -E "dspw|dsp write"
 .PHONY: dspwfuzz
+
+# Differential fuzz of the C 65816 opcodes vs the original asm handlers (same machine state, WRAM + registers compared)
+cpufuzz: all harness
+	HARNESS_DIR=$(abspath $(B)) $(B)/harness $(B)/zsnes_libretro.so "$(ROM)" -f 300 -C $(or $(N),300000) 2>&1 | grep -E "cpu fuzz"
+.PHONY: cpufuzz
