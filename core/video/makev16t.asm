@@ -1972,7 +1972,7 @@ NEWSYM clearback16bdualrev2
 
 SECTION .bss
 NEWSYM DoTransp, resb 1
-SECTION .data
+SECTION .text
 
 ;*******************************************************
 ; Clear Backarea, 16-bit mode w/ transparency

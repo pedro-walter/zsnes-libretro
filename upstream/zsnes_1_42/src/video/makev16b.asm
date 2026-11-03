@@ -879,7 +879,8 @@ NEWSYM setpalall
     mov [pal16bcl+esi*2],bx
     xor ax,0FFFFh
     and ax,[vesa2_clbit]
-    mov [pal16bxcl+esi*2],ax
+    movzx eax,ax            ; full dword: init leaves 0FFFFFFFFh here, whose high word indexed fulladdtab out of range (libretro port fix)
+    mov [pal16bxcl+esi*2],eax
     add esi,2
     inc byte[colleft16b]
     jnz near .loopa
@@ -960,7 +961,8 @@ NEWSYM setpalette16b
     mov [pal16bcl+esi*2],bx
     xor ax,0FFFFh
     and ax,[vesa2_clbit]
-    mov [pal16bxcl+esi*2],ax
+    movzx eax,ax            ; full dword: init leaves 0FFFFFFFFh here, whose high word indexed fulladdtab out of range (libretro port fix)
+    mov [pal16bxcl+esi*2],eax
 .skipa
     add esi,2
     inc byte[colleft16b]
@@ -1038,7 +1040,8 @@ NEWSYM setpalallgamma
     mov [pal16bcl+esi*2],bx
     xor ax,0FFFFh
     and ax,[vesa2_clbit]
-    mov [pal16bxcl+esi*2],ax
+    movzx eax,ax            ; full dword: init leaves 0FFFFFFFFh here, whose high word indexed fulladdtab out of range (libretro port fix)
+    mov [pal16bxcl+esi*2],eax
     add esi,2
     inc byte[colleft16b]
     jnz near .loopa
@@ -1120,7 +1123,8 @@ NEWSYM setpalette16bgamma
     mov [pal16bcl+esi*2],bx
     xor ax,0FFFFh
     and ax,[vesa2_clbit]
-    mov [pal16bxcl+esi*2],ax
+    movzx eax,ax            ; full dword: init leaves 0FFFFFFFFh here, whose high word indexed fulladdtab out of range (libretro port fix)
+    mov [pal16bxcl+esi*2],eax
 .skipa
     add esi,2
     inc byte[colleft16b]

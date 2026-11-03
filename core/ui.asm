@@ -27,7 +27,7 @@ EXTSYM SPCDisable,SystemInit,allocmem
 EXTSYM FPSOn,FPSAtStart,cfgsoundon
 EXTSYM xa
 EXTSYM ram7fa,wramdataa
-EXTSYM malloc,free
+EXTSYM malloc,free,memset
 EXTSYM StateBackup
 EXTSYM ADSRGAINSwitch,MMXSupport,ScreenScale,SoundQuality
 EXTSYM debugger,pl1contrl,pl2contrl,romtype,smallscreence
@@ -611,6 +611,13 @@ SECTION .text
     pop ebx
     cmp eax,0
     je near %3
+    push eax
+    push ebx
+    push 0
+    push eax
+    call memset         ; zero the block: stale heap contents made unwritten video lines nondeterministic
+    add esp,12
+    pop eax
     mov ebx,dword[cmemallocptr]
     add dword[cmemallocptr],4
     mov [ebx],eax
