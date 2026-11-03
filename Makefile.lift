@@ -29,6 +29,10 @@ $(O)/c/cfixed.stamp: $(CSRCS) $(L)/lift_cvars.txt tools/lift/cfix.py
 	@mkdir -p $(O)/c
 	python3 tools/lift/cfix.py $(L)/lift_cvars.txt $(O)/c $(CSRCS)
 	touch $@
+# DSP-1 uses doubles; the original ran on x87 (extended intermediates), so match that on x86-64
+FPX := $(if $(filter 64,$(BITS)),-mfpmath=387,)
+$(O)/c/dsp1emu.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
+	$(CC) $(CFL) $(FPX) -include tools/lift/lift_cdefs.h -I$(dir $(firstword $(CSRCS))) -Icore/linux -Icore/chips -Icore/cpu -Icore/effects -c -o $@ $(O)/c/dsp1emu.c
 $(O)/c/%.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
 	$(CC) $(CFL) -include tools/lift/lift_cdefs.h -I$(dir $(firstword $(CSRCS))) -Icore/linux -Icore/chips -Icore/cpu -Icore/effects -c -o $@ $(O)/c/$*.c
 

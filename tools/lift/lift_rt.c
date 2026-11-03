@@ -97,7 +97,8 @@ static u32 ext_invoke(u32 id, const u32 *a)
     if (idx >= (u32)lift_ext_count) die("bad foreign id 0x%x", id);
     f = lift_ext_fns[idx];
     if (!f) die("foreign function %s not linked", lift_ext_names[idx]);
-    { static int tr = -1; if (tr < 0) tr = getenv("LIFT_TRACE_EXT") != 0; if (tr) fprintf(stderr, "ext %s(%x,%x,%x)\n", lift_ext_names[idx], a[0], a[1], a[2]); }
+    static int tr = -1; if (tr < 0) tr = getenv("LIFT_TRACE_EXT") != 0;
+    if (tr) { u32 r = ((ext8_t)f)(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]); fprintf(stderr, "ext %s(%x,%x,%x)=%x\n", lift_ext_names[idx], a[0], a[1], a[2], r); return r; }
     return ((ext8_t)f)(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
 }
 u32 ext_call(u32 id) { return ext_invoke(id, (const u32 *)(uintptr_t)LG.esp); }

@@ -42,6 +42,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 //#define debug06
 
 #define __OPT__
+/* x87 saturates double->short to -32768 on overflow (what the 32-bit original did); do the same everywhere */
+static inline short D2S(double v){ return (v>-32769.0 && v<32768.0) ? (short)v : (short)-32768; }
+#include <stdlib.h>
+#include <stdio.h>
 #define __OPT02__
 #define __OPT06__
 
@@ -276,8 +280,8 @@ void C4TransfWireFrame()
   c4y=c4x2*sin(tanval)+c4y2*cos(tanval);
 
   // Scale
-  C4WFXVal=(short)(c4x*C4WFScale/(0x90*(c4z+0x95))*0x95);
-  C4WFYVal=(short)(c4y*C4WFScale/(0x90*(c4z+0x95))*0x95);
+  C4WFXVal=D2S(c4x*C4WFScale/(0x90*(c4z+0x95))*0x95);
+  C4WFYVal=D2S(c4y*C4WFScale/(0x90*(c4z+0x95))*0x95);
 }
 
 void C4TransfWireFrame2()
@@ -302,8 +306,8 @@ void C4TransfWireFrame2()
   c4y=c4x2*sin(tanval)+c4y2*cos(tanval);
 
   // Scale
-  C4WFXVal=(short)(c4x*C4WFScale/0x100);
-  C4WFYVal=(short)(c4y*C4WFScale/0x100);
+  C4WFXVal=D2S(c4x*C4WFScale/0x100);
+  C4WFYVal=D2S(c4y*C4WFScale/0x100);
 }
 
 void C4CalcWireFrame()
@@ -340,7 +344,7 @@ void C4Op1F()
   }
   else {
     tanval = ((double)C41FYVal)/((double)C41FXVal);
-    C41FAngleRes=(short)(atan(tanval)/(PI*2)*512);
+    C41FAngleRes=D2S(atan(tanval)/(PI*2)*512);
     C41FAngleRes=C41FAngleRes;
     if (C41FXVal<0) C41FAngleRes+=0x100;
     C41FAngleRes&=0x1FF;
@@ -351,7 +355,7 @@ void C4Op15()
 {
   tanval=sqrt(((double)C41FYVal)*((double)C41FYVal)+((double)C41FXVal)*
     ((double)C41FXVal));
-  C41FDist=(short)tanval;
+  C41FDist=D2S(tanval);
 }
 
 void C4Op0D()
@@ -359,8 +363,8 @@ void C4Op0D()
   tanval=sqrt(((double)C41FYVal)*((double)C41FYVal)+((double)C41FXVal)*
     ((double)C41FXVal));
   tanval=(double)C41FDistVal/tanval;
-  C41FYVal=(short)(((double)C41FYVal*tanval)*0.99);
-  C41FXVal=(short)(((double)C41FXVal*tanval)*0.98);
+  C41FYVal=D2S(((double)C41FYVal*tanval)*0.99);
+  C41FXVal=D2S(((double)C41FXVal*tanval)*0.98);
 }
 #endif
 
@@ -752,8 +756,8 @@ void DSPOp02()
    if (ViewerZ1==0)ViewerZ1++;
    NumberOfSlope=ViewerZ/-ViewerZ1;
 
-   Op02CX=(short)(Op02CXF=ViewerX+ViewerX1*NumberOfSlope);
-   Op02CY=(short)(Op02CYF=ViewerY+ViewerY1*NumberOfSlope);
+   Op02CX=D2S(Op02CXF=ViewerX+ViewerX1*NumberOfSlope);
+   Op02CY=D2S(Op02CYF=ViewerY+ViewerY1*NumberOfSlope);
 
    Op02VOF=0x0000;
    ReversedLES=0;
@@ -762,9 +766,9 @@ void DSPOp02()
      ReversedLES=1;
      Op02LESb=VofAngle+0x4000-(Op02LES-(VofAngle+0x4000));
    }
-   Op02VVA = (short)(Op02LESb * tan((Op02AZS-0x4000)*6.2832/65536.0));
+   Op02VVA = D2S(Op02LESb * tan((Op02AZS-0x4000)*6.2832/65536.0));
    if ((Op02LESb>=VofAngle) && (Op02LESb<=VofAngle+0x4000)) {
-      Op02VOF= (short)(Op02LESb * tan((Op02AZS-0x4000-VofAngle)*6.2832/65536.0));
+      Op02VOF= D2S(Op02LESb * tan((Op02AZS-0x4000-VofAngle)*6.2832/65536.0));
       Op02VVA-=Op02VOF;
    }
    if (ReversedLES){
@@ -787,8 +791,8 @@ void DSPOp02()
 
    CenterX = (-sin(NAasB)*ViewerZc*CXdistance)+ViewerXc;
    CenterY = (cos(NAasB)*ViewerZc*CXdistance)+ViewerYc;
-   Op02CX = (short)CenterX;
-   Op02CY = (short)CenterY;
+   Op02CX = D2S(CenterX);
+   Op02CY = D2S(CenterY);
 
    ViewerXc=ViewerX;//-Op02FX);
    ViewerYc=ViewerY;//-Op02FY);
@@ -799,7 +803,7 @@ void DSPOp02()
    CenterY = (cos(NAasB)*ViewerZc*CXdistance)+ViewerYc;
    if (CenterY<-32768) CenterY = -32768; if (CenterY>32767) CenterY=32767;
 
-   TValDebug = (short)((NAzsB*65536/6.28));
+   TValDebug = D2S((NAzsB*65536/6.28));
    TValDebug2 = ScrDispl;
 
 //   if (Op02CY < 0) {Op02CYSup = Op02CY/256; Op02CY = 0;}
@@ -817,7 +821,6 @@ void DSPOp02()
       Log_Message("     AAS:%d AZS:%d VOF:%d VVA:%d",Op02AAS,Op02AZS,Op02VOF,Op02VVA);
       Log_Message("     VX:%d VY:%d VZ:%d",(short)ViewerX,(short)ViewerY,(short)ViewerZ);
    #endif
-
 }
 #else
 
@@ -849,8 +852,8 @@ void DSPOp02()
    if (ViewerZ1==0)ViewerZ1++;
    NumberOfSlope=ViewerZ/-ViewerZ1;
 
-   Op02CX=(short)(Op02CXF=ViewerX+ViewerX1*NumberOfSlope);
-   Op02CY=(short)(Op02CYF=ViewerY+ViewerY1*NumberOfSlope);
+   Op02CX=D2S(Op02CXF=ViewerX+ViewerX1*NumberOfSlope);
+   Op02CY=D2S(Op02CYF=ViewerY+ViewerY1*NumberOfSlope);
 
    ViewerXc=ViewerX;//-Op02FX);
    ViewerYc=ViewerY;//-Op02FY);
@@ -863,9 +866,9 @@ void DSPOp02()
      ReversedLES=1;
      Op02LESb=VofAngle+0x4000-(Op02LES-(VofAngle+0x4000));
    }
-   Op02VVA = (short)(Op02LESb * tan((Op02AZS-0x4000)*6.2832/65536.0));
+   Op02VVA = D2S(Op02LESb * tan((Op02AZS-0x4000)*6.2832/65536.0));
    if ((Op02LESb>=VofAngle) && (Op02LESb<=VofAngle+0x4000)) {
-      Op02VOF= (short)(Op02LESb * tan((Op02AZS-0x4000-VofAngle)*6.2832/65536.0));
+      Op02VOF= D2S(Op02LESb * tan((Op02AZS-0x4000-VofAngle)*6.2832/65536.0));
       Op02VVA-=Op02VOF;
    }
    if (ReversedLES){
@@ -884,10 +887,10 @@ void DSPOp02()
 
    CenterX = (-sin(NAasB)*ViewerZc*CXdistance)+ViewerXc;
    if (CenterX<-32768) CenterX = -32768; if (CenterX>32767) CenterX=32767;
-   Op02CX = (short)CenterX;
+   Op02CX = D2S(CenterX);
    CenterY = (cos(NAasB)*ViewerZc*CXdistance)+ViewerYc;
    if (CenterY<-32768) CenterY = -32768; if (CenterY>32767) CenterY=32767;
-   Op02CY = (short)CenterY;
+   Op02CY = D2S(CenterY);
 
    TValDebug = (NAzsB*65536/6.28);
    TValDebug2 = ScrDispl;
@@ -975,10 +978,10 @@ void DSPOp0A()
 
    // A = (x4-x3)/256
    m = (x4-x3)/256*256; if (m>32767) m=32767; if (m<-32768) m=-32768;
-   Op0AA = (short)(m);
+   Op0AA = D2S(m);
    // C = (y4-y3)/256
    m = (y4-y3)/256*256; if (m>32767) m=32767; if (m<-32768) m=-32768;
-   Op0AC = (short)(m);
+   Op0AC = D2S(m);
    if (ypos==0){
      Op0AB = 0;
      Op0AD = 0;
@@ -986,10 +989,10 @@ void DSPOp0A()
    else {
      // B = (x2-x1)/Vs
      m = (x2-CenterX)/ypos*256; if (m>32767) m=32767; if (m<-32768) m=-32768;
-     Op0AB = (short)(m);
+     Op0AB = D2S(m);
      // D = (y2-y1)/Vs
      m = (y2-CenterY)/ypos*256; if (m>32767) m=32767; if (m<-32768) m=-32768;
-     Op0AD = (short)(m);
+     Op0AD = D2S(m);
    }
 
    Op0AVS+=1;
@@ -1047,8 +1050,8 @@ void DSPOp06()
    if (ObjPZ2<0)
    {
       double d;
-      Op06H=(short)(-ObjPX2*Op02LES/-(ObjPZ2)); //-ObjPX2*256/-ObjPZ2;
-      Op06V=(short)(-ObjPY2*Op02LES/-(ObjPZ2)); //-ObjPY2*256/-ObjPZ2;
+      Op06H=D2S(-ObjPX2*Op02LES/-(ObjPZ2)); //-ObjPX2*256/-ObjPZ2;
+      Op06V=D2S(-ObjPY2*Op02LES/-(ObjPZ2)); //-ObjPY2*256/-ObjPZ2;
       d=(double)Op02LES;
 	  d*=256.0;
 	  d/=(-ObjPZ2);
@@ -1107,8 +1110,8 @@ void DSPOp06()
 
    if (ObjPZ2<0)
    {
-      Op06H=(short)(-ObjPX2*Op02LES/-(ObjPZ2)); //-ObjPX2*256/-ObjPZ2;
-      Op06V=(short)(-ObjPY2*Op02LES/-(ObjPZ2)); //-ObjPY2*256/-ObjPZ2;
+      Op06H=D2S(-ObjPX2*Op02LES/-(ObjPZ2)); //-ObjPX2*256/-ObjPZ2;
+      Op06V=D2S(-ObjPY2*Op02LES/-(ObjPZ2)); //-ObjPY2*256/-ObjPZ2;
       double d=(double)Op02LES;
 	  d*=256.0;
 	  d/=(-ObjPZ2);
@@ -1392,8 +1395,8 @@ void DSPOp0E()
    RVPos = Op0EV;
    RHPos = Op0EH;
    GetRXYPos();
-   Op0EX = (short)(RXRes);
-   Op0EY = (short)(RYRes);
+   Op0EX = D2S(RXRes);
+   Op0EY = D2S(RYRes);
 
    #ifdef DebugDSP1
       Log_Message("OP0E COORDINATE H:%d V:%d   X:%d Y:%d",Op0EH,Op0EV,Op0EX,Op0EY);
