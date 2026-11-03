@@ -154,6 +154,9 @@ int zs_run_frame(void)
     if (!emu_started || emu_dead) return 0;
     poll_input();
     swapcontext(&main_ctx, &emu_ctx);
+#ifdef LIFTED
+    lift_baseline();   /* no-op after the first frame */
+#endif
     return !emu_dead;
 }
 
@@ -320,3 +323,14 @@ void SaveSramData(void);
 void *zs_sram_ptr(void) { return ramsize ? (void *)sram : NULL; }
 size_t zs_sram_size(void) { return ramsize; }
 void zs_save_sram(void) { if (emu_started && !emu_dead) zs_call_asm(SaveSramData); }
+
+/* ---------------- save states (lifted build only) ---------------- */
+#ifdef LIFTED
+size_t zs_state_size(void) { return lift_state_size(); }
+int zs_state_save(void *buf, size_t n) { return emu_started && !emu_dead ? lift_state_save(buf, n) : 0; }
+int zs_state_load(const void *buf, size_t n) { return emu_started && !emu_dead ? lift_state_load(buf, n) : 0; }
+#else
+size_t zs_state_size(void) { return 0; }
+int zs_state_save(void *buf, size_t n) { return 0; }
+int zs_state_load(const void *buf, size_t n) { return 0; }
+#endif

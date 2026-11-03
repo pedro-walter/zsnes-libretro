@@ -138,3 +138,81 @@ void lift_call_regs(u32 id, u32 *r)
     r[0] = LG.eax; r[1] = LG.ecx; r[2] = LG.edx; r[3] = LG.ebx; r[4] = LG.esi; r[5] = LG.edi; r[6] = LG.ebp;
     LG = save;
 }
+
+/* ---------------- save states ----------------
+ * The guest is always suspended at the same point between frames (inside sem_sleep), so its whole machine state is the
+ * arena + LG + the x87 stack.  A state stores only the 4K pages that differ from a baseline captured after the first
+ * frame, plus the registers; loading restores the baseline first. */
+#define PG 4096u
+#define STATE_MAX (24u << 20)
+static u8 *baseline;
+static u32 base_used;
+#define STACK_SAVE (64u << 10)
+static u8 *stack_base_copy;
+
+void lift_baseline(void)
+{
+    if (baseline || !inited) return;
+    base_used = (heap_ptr - LIFT_ARENA_BASE + PG - 1) & ~(PG - 1);
+    baseline = malloc(base_used);
+    stack_base_copy = malloc(STACK_SAVE);
+    memcpy(baseline, (void *)(uintptr_t)LIFT_ARENA_BASE, base_used);
+    memcpy(stack_base_copy, (void *)(uintptr_t)(LIFT_ARENA_BASE + LIFT_ARENA_SIZE - STACK_SAVE), STACK_SAVE);
+}
+
+size_t lift_state_size(void) { return STATE_MAX; }
+
+typedef struct { u32 magic, version, heap_ptr, used_pages, stack_pages, base_used; lift_state_t lg; double fp[8]; int fptop; } state_hdr_t;
+
+int lift_state_save(void *out, size_t cap)
+{
+    u8 *o = out, *p;
+    state_hdr_t *h = (state_hdr_t *)o;
+    u32 i, np = 0, sp = 0, cur_used = (heap_ptr - LIFT_ARENA_BASE + PG - 1) & ~(PG - 1);
+    u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE;
+    u8 *stk = arena + LIFT_ARENA_SIZE - STACK_SAVE;
+    if (!baseline || cap < sizeof *h) return 0;
+    memset(h, 0, sizeof *h);
+    p = o + sizeof *h;
+    for (i = 0; i < cur_used / PG; i++) {
+        int diff = i >= base_used / PG;
+        if (!diff) diff = memcmp(arena + i * PG, baseline + i * PG, PG) != 0;
+        if (diff) {
+            if ((size_t)(p - o) + 4 + PG > cap) return 0;
+            *(u32 *)p = i; memcpy(p + 4, arena + i * PG, PG); p += 4 + PG; np++;
+        }
+    }
+    for (i = 0; i < STACK_SAVE / PG; i++) {
+        if (memcmp(stk + i * PG, stack_base_copy + i * PG, PG)) {
+            if ((size_t)(p - o) + 4 + PG > cap) return 0;
+            *(u32 *)p = i; memcpy(p + 4, stk + i * PG, PG); p += 4 + PG; sp++;
+        }
+    }
+    h->magic = 0x4C46535Au; h->version = 1; h->heap_ptr = heap_ptr; h->used_pages = np; h->stack_pages = sp; h->base_used = base_used;
+    h->lg = LG; memcpy(h->fp, lift_fp, sizeof lift_fp); h->fptop = lift_fptop;
+    return (int)(p - o);
+}
+
+int lift_state_load(const void *in, size_t n)
+{
+    const u8 *p = in;
+    const state_hdr_t *h = (const state_hdr_t *)p;
+    u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE;
+    u8 *stk = arena + LIFT_ARENA_SIZE - STACK_SAVE;
+    u32 i;
+    if (!baseline || n < sizeof *h || h->magic != 0x4C46535Au || h->version != 1 || h->base_used != base_used) return 0;
+    {   /* validate */
+        const u8 *q = p + sizeof *h;
+        u32 cnt = h->used_pages + h->stack_pages;
+        if ((size_t)(q - p) + (size_t)cnt * (4 + PG) > n) return 0;
+    }
+    memcpy(arena, baseline, base_used);
+    if (h->heap_ptr > heap_ptr) memset(arena + base_used, 0, ((h->heap_ptr - LIFT_ARENA_BASE + PG - 1) & ~(PG - 1)) - base_used);
+    memcpy(stk, stack_base_copy, STACK_SAVE);
+    p += sizeof *h;
+    for (i = 0; i < h->used_pages; i++, p += 4 + PG) memcpy(arena + (size_t)*(const u32 *)p * PG, p + 4, PG);
+    for (i = 0; i < h->stack_pages; i++, p += 4 + PG) memcpy(stk + (size_t)*(const u32 *)p * PG, p + 4, PG);
+    heap_ptr = h->heap_ptr;
+    LG = h->lg; memcpy(lift_fp, h->fp, sizeof lift_fp); lift_fptop = h->fptop;
+    return 1;
+}

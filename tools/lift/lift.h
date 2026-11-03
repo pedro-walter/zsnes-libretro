@@ -70,3 +70,7 @@ void zl_free(void *p);
 #ifdef __cplusplus
 }
 #endif
+void lift_baseline(void);
+size_t lift_state_size(void);
+int lift_state_save(void *out, size_t cap);
+int lift_state_load(const void *in, size_t n);

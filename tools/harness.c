@@ -75,6 +75,7 @@ static void wav_header(FILE *f, uint32_t bytes) {
     fwrite("data", 1, 4, f); fwrite(&bytes, 4, 1, f);
 }
 
+static int statef = 0, statelen = 120;
 static int resetf = -1, fuzz = 0, dspfuzz = 0, dspwfuzz = 0, cpufuzz = 0, hdmafuzz = 0, schedfuzz = 0, regwfuzz = 0;
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: %s core.so rom [-f N] [-s a,b] [-o prefix] [-w wav] [-i f:mask,...]\n", argv[0]); return 2; }
@@ -95,6 +96,8 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "-H")) hdmafuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-I")) schedfuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-R")) regwfuzz = atoi(argv[i+1]);
+        else if (!strcmp(argv[i], "-X")) statef = atoi(argv[i+1]);
+        else if (!strcmp(argv[i], "-Y")) statelen = atoi(argv[i+1]);
     }
     void *h = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL);
     if (!h) { fprintf(stderr, "dlopen: %s\n", dlerror()); return 1; }
@@ -124,6 +127,22 @@ int main(int argc, char **argv) {
             char path[512]; snprintf(path, sizeof path, "%s_%04d.png", prefix, f); write_png(path);
             uint32_t c = last_rgb ? crc32(0, last_rgb, lw * lh * 3) : 0; printf("frame %d: %ux%u crc %08x -> %s\n", f, lw, lh, c, path); } }
             s += n ? n : 1; if (*s == ',') s++; }
+    }
+    if (statef) {   /* save-state round trip: run N frames, save, run M frames (record CRCs), load, run M frames again, compare */
+        size_t (*ssz)(void) = (size_t (*)(void))dlsym(h, "retro_serialize_size");
+        bool (*ser)(void *, size_t) = (bool (*)(void *, size_t))dlsym(h, "retro_serialize");
+        bool (*unser)(const void *, size_t) = (bool (*)(const void *, size_t))dlsym(h, "retro_unserialize");
+        size_t sz = ssz ? ssz() : 0; uint8_t *buf = malloc(sz ? sz : 1);
+        uint32_t *c1 = calloc(statelen, 4), *c2 = calloc(statelen, 4); int bad = 0;
+        if (!sz || !ser(buf, sz)) { printf("state: serialize failed (size %zu)\n", sz); return 1; }
+        audio_crc = 0;
+        for (int k = 0; k < statelen; k++) { retro_run_p(); c1[k] = (last_rgb ? crc32(0, last_rgb, lw * lh * 3) : 0) ^ audio_crc; }
+        if (!unser(buf, sz)) { printf("state: unserialize failed\n"); return 1; }
+        audio_crc = 0;
+        for (int k = 0; k < statelen; k++) { retro_run_p(); c2[k] = (last_rgb ? crc32(0, last_rgb, lw * lh * 3) : 0) ^ audio_crc; }
+        /* audio_crc is cumulative: compare the video part only plus the per-run delta by recomputing */
+        for (int k = 0; k < statelen; k++) if ((c1[k] ^ c2[k]) != 0) { bad++; if (bad < 4) printf("state: frame +%d differs\n", k + 1); }
+        printf("state round trip: %d frames, %d differing\n", statelen, bad);
     }
     if (schedfuzz) { unsigned (*fz)(unsigned, unsigned) = (unsigned (*)(unsigned, unsigned))dlsym(h, "zs_sched_fuzz"); if (fz) { unsigned m = fz(schedfuzz, 7); printf("sched fuzz mismatches: %u\n", m); } }
     if (regwfuzz) { unsigned (*fz)(unsigned, unsigned) = (unsigned (*)(unsigned, unsigned))dlsym(h, "zs_regw_fuzz"); if (fz) { unsigned m = fz(regwfuzz, 5); printf("regw fuzz mismatches: %u\n", m); } }

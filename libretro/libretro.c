@@ -148,9 +148,25 @@ void retro_run(void)
     }
 }
 
-size_t retro_serialize_size(void) { return 0; }
-bool retro_serialize(void *d, size_t s) { return false; }
-bool retro_unserialize(const void *d, size_t s) { return false; }
+extern size_t zs_state_size(void);
+extern int zs_state_save(void *, size_t);
+extern int zs_state_load(const void *, size_t);
+size_t retro_serialize_size(void) { return zs_state_size(); }
+bool retro_serialize(void *d, size_t s)
+{
+    int n;
+    if (s < 8) return false;
+    *(int32_t *)d = audio_frames_pending;
+    n = zs_state_save((char *)d + 8, s - 8);
+    if (n > 0 && (size_t)n + 8 < s) memset((char *)d + 8 + n, 0, s - 8 - n);
+    return n > 0;
+}
+bool retro_unserialize(const void *d, size_t s)
+{
+    if (s < 8 || !zs_state_load((const char *)d + 8, s - 8)) return false;
+    audio_frames_pending = *(const int32_t *)d;
+    return true;
+}
 extern unsigned char wramdataa[];   /* 7E:0000-FFFF, immediately followed by 7F (ram7fa) */
 extern void *zs_sram_ptr(void); extern size_t zs_sram_size(void);
 void *retro_get_memory_data(unsigned id)

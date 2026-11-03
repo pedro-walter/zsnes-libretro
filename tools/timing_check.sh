@@ -16,7 +16,7 @@ if cmp -s "$W/ref.out" "$W/cand.out"; then echo "video CRCs + audio CRC: IDENTIC
 # Golden trace: captured from the real ZSNES 1.42 executable (original asm + original SDL platform layer on the
 # headless shim; `make golden`).  Sampled at draw time, aligned from the first game frame (frame counter = 1).
 GOLD="$D/refs/golden_topgear_e_zsnes_exe.txt"; rc=0
-if [ -f "$GOLD" ]; then   # golden is Top Gear (Europe) only; for other ROMs this check is skipped
+if [ -f "$GOLD" ] && [ "$(md5sum "$ROM" | cut -d" " -f1)" = "$(cat "$D/refs/golden_rom.md5" 2>/dev/null)" ]; then   # golden is Top Gear (Europe) only; for other ROMs this check is skipped
   ZS_WRAM_AT_DRAW=1 HARNESS_DIR="$W" "$(H "$CAND")" "$CAND" "$ROM" -f 4300 -t 1e62:2,1ff6:2,1ffc:2 -T "$W/gold.trace" >/dev/null 2>&1
   python3 -I - "$W/gold.trace" "$GOLD" <<'PY' || rc=1
 import sys
