@@ -208,6 +208,74 @@ static void dual_run(u32 k)
     LG.esp -= 4;     /* give lift_run its return address back */
     dual_busy = 0;
 }
+/* Tail-style overrides (opcode handlers that end in "jmp next handler"): ZL_DUALT=N [ZL_DUAL_ONLY=substr] checks every Nth call
+ * by single-stepping: the cycle counter dh is forced to 0 so that the handler executes exactly one opcode and then returns
+ * (the asm endloop "sub dh,cycles; jc ret").  The C version and the original lifted body run from the same state; the
+ * real emulation then continues with the C version from the untouched state. */
+static unsigned long dualt_calls[8192], dualt_diffs[8192];
+static int dualt_rate = -1, dualt_reports;
+static void dualt_summary(void)
+{
+    int k; unsigned long c = 0, d = 0;
+    for (k = 0; k < lift_ovr_count && k < 8192; k++) { c += dualt_calls[k]; d += dualt_diffs[k]; if (dualt_diffs[k]) fprintf(stderr, "DUALT %-28s checked %lu mismatching %lu\n", lift_ovr_cnames[k], dualt_calls[k], dualt_diffs[k]); }
+    fprintf(stderr, "DUALT total checked %lu mismatching %lu\n", c, d);
+}
+static int dualt_wanted(u32 k)
+{
+    if (dualt_rate < 0) {
+        const char *e = getenv("ZL_DUALT"); dualt_rate = e ? atoi(e) : 0;
+        dual_only = getenv("ZL_DUAL_ONLY");
+        if (dualt_rate > 0) atexit(dualt_summary);
+    }
+    if (dualt_rate <= 0 || lift_orig || dual_busy || !(lift_ovr_flags[k] & 1) || k >= 8192) return 0;
+    if (dual_only && !strstr(lift_ovr_names[k], dual_only)) return 0;
+    { static unsigned long n[8192]; return (n[k]++ % (unsigned)dualt_rate) == 0; }
+}
+extern u32 zl_tail_orig(u32 k) __attribute__((weak));
+extern u32 zl_sa1_orig(u32 k) __attribute__((weak));
+static void dual_tail(u32 k)
+{
+    u32 oid = lift_ovr_ids[k] ? lift_ovr_ids[k] : ((zl_tail_orig ? zl_tail_orig(k) : 0) ? zl_tail_orig(k) : (zl_sa1_orig ? zl_sa1_orig(k) : 0));
+    if (!oid) return;
+    dual_busy = 1;
+    u32 used = (heap_ptr - LIFT_ARENA_BASE + 15u) & ~15u, i, ndiff = 0;
+    size_t need = (size_t)used + DSTK;
+    u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE, *stk = arena + LIFT_ARENA_SIZE - DSTK;
+    lift_state_t lg0 = LG, lgA; double fp0[8]; int fptop0 = lift_fptop;
+    u32 real = M32(LG.esp), slot = LG.esp;
+    if (need > dsnapcap) { free(dsnapA); free(dsnap0); dsnapcap = need + (4u << 20); dsnapA = malloc(dsnapcap); dsnap0 = malloc(dsnapcap); if (!dsnapA || !dsnap0) die("dual: out of memory (%zu)", dsnapcap); }
+    memcpy(fp0, lift_fp, sizeof fp0);
+    memcpy(dsnap0, arena, used); memcpy(dsnap0 + used, stk, DSTK);
+    LG.edx &= 0xFFFF00FFu;                       /* dh = 0: one opcode, then the endloop returns */
+    { u32 nx = lift_ovr_fns[k](); if (nx) { LG.esp = lg0.esp; goto skip; } }
+    LG.esp += 4; lgA = LG;
+    memcpy(dsnapA, arena, used); memcpy(dsnapA + used, stk, DSTK);
+    dual_restore(arena, dsnap0, used); memcpy(stk, dsnap0 + used, DSTK);
+    LG = lg0; LG.edx &= 0xFFFF00FFu; memcpy(lift_fp, fp0, sizeof fp0); lift_fptop = fptop0;
+    M32(slot) = SENT_ID;
+    lift_orig++; lift_run(oid); lift_orig--;
+    dualt_calls[k]++;
+    {
+        const char *why[16]; int nw = 0;
+        #define CRT(r) if (lgA.r != LG.r && nw < 16) { static char b[16][64]; snprintf(b[nw], 64, #r " C=%08x orig=%08x", lgA.r, LG.r); why[nw] = b[nw], nw++; }
+        { static int all = -1; if (all < 0) all = getenv("ZL_DUALT_ALL") != NULL;   /* eax/ecx/ebx high bits are scratch between opcodes */
+          if (all) { CRT(eax) CRT(ecx) } lgA.ebx &= 0xFF; LG.ebx &= 0xFF; CRT(edx) CRT(ebx) CRT(esi) CRT(edi) CRT(ebp) CRT(esp) }
+        for (i = 0; i < used; i++)
+            if (dsnapA[i] != arena[i] && !ignored(LIFT_ARENA_BASE + i)) {
+                if (ndiff < 8 && dualt_reports < dual_max) { u32 off; const char *n = symname(LIFT_ARENA_BASE + i, &off); fprintf(stderr, "DUALT %s: %08x (%s+0x%x) C=%02x orig=%02x\n", lift_ovr_cnames[k], LIFT_ARENA_BASE + i, n, off, dsnapA[i], arena[i]); }
+                ndiff++;
+            }
+        if (ndiff || nw) {
+            int w; dualt_diffs[k]++; dualt_reports++;
+            if (dualt_reports <= dual_max) { fprintf(stderr, "DUALT %s: MISMATCH (%u bytes)", lift_ovr_cnames[k], ndiff); for (w = 0; w < nw; w++) fprintf(stderr, " [%s]", why[w]); fputc('\n', stderr); }
+        }
+    }
+skip:
+    dual_restore(arena, dsnap0, used); memcpy(stk, dsnap0 + used, DSTK);
+    LG = lg0; memcpy(lift_fp, fp0, sizeof fp0); lift_fptop = fptop0;
+    M32(slot) = real;
+    dual_busy = 0;
+}
 static int dual_wanted(u32 k)
 {
     if (dual_rate < 0) {
@@ -288,6 +356,7 @@ u32 lift_run(u32 pc)
             { u32 k = pc & 0x1FFFFF, nx;
               if (!ovr_built) ovr_build();
               if (ovr_dis[k]) { if (!lift_ovr_ids[k]) die("cannot disable table-installed override %s", lift_ovr_cnames[k]); lift_once = 1; pc = lift_ovr_ids[k]; continue; }
+              if (dualt_wanted(k)) dual_tail(k);
               if (dual_wanted(k)) { dual_run(k); nx = 0; } else nx = lift_ovr_fns[k]();
               if (nx) { pc = nx; continue; } }
             pc = M32(LG.esp); LG.esp += 4;
@@ -304,6 +373,7 @@ u32 lift_run(u32 pc)
             k = ovr_find(pc);
             if (k >= 0 && !ovr_dis[k]) {
                 u32 nx;
+                if (dualt_wanted((u32)k)) dual_tail((u32)k);
                 if (dual_wanted((u32)k)) { dual_run((u32)k); nx = 0; } else nx = lift_ovr_fns[k]();
                 if (nx) { pc = nx; continue; }
                 pc = M32(LG.esp); LG.esp += 4;
