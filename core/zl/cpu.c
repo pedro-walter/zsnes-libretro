@@ -768,7 +768,11 @@ static int zs_cpu_op_inner(u32 op, u32 var)
         stackand = 0x01FF; stackor = 0x0100;
         return 1;
     }
+#ifdef SA1
+    case 0x00: { extern u8 debstop4; debstop4 = 1; R.esi -= 1; return 1; }   /* SA1COp00 is a stop (BRKMacro there is unreachable) */
+#else
     case 0x00: irq_entry(brkv, brkv8, 1); return 1;
+#endif
     case 0x02: irq_entry(copv, copv8, 0); return 1;
 #ifdef SA1
     case 0x40: {                                  /* SA1COp40: intrset=2, then the SA-1 RTIMacro (always the native 4-byte frame) */

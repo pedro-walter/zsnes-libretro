@@ -27,6 +27,39 @@ static inline void set_ax(u32 v) { EAX = (EAX & ~0xFFFFu) | (v & 0xFFFF); }
 static inline void set_dx(u32 v) { EDX = (EDX & ~0xFFFFu) | (v & 0xFFFF); }
 #define BX ((u16)EBX)
 #define LINE_STRIDE (288u * 2)
+static int vd_trace, vd_calls_n;
+static const struct { u32 id; const char *n; } vd_names[] = {
+    { ZID_drawbg1line16b, "drawbg1line16b" },
+    { ZID_drawbg1tile16b, "drawbg1tile16b" },
+    { ZID_drawbg1linepr116b, "drawbg1linepr116b" },
+    { ZID_drawbg1tilepr116b, "drawbg1tilepr116b" },
+    { ZID_drawbg2line16b, "drawbg2line16b" },
+    { ZID_drawbg2tile16b, "drawbg2tile16b" },
+    { ZID_drawbg2linepr116b, "drawbg2linepr116b" },
+    { ZID_drawbg2tilepr116b, "drawbg2tilepr116b" },
+    { ZID_drawbg3line16b, "drawbg3line16b" },
+    { ZID_drawbg3tile16b, "drawbg3tile16b" },
+    { ZID_drawbg3linepr116b, "drawbg3linepr116b" },
+    { ZID_drawbg3tilepr116b, "drawbg3tilepr116b" },
+    { ZID_drawbg4line16b, "drawbg4line16b" },
+    { ZID_drawbg4tile16b, "drawbg4tile16b" },
+    { ZID_drawbg4linepr116b, "drawbg4linepr116b" },
+    { ZID_drawbg4tilepr116b, "drawbg4tilepr116b" },
+    { ZID_drawsprng16b, "drawsprng16b" },
+    { ZID_drawsprng16bhr, "drawsprng16bhr" },
+    { ZID_drawmode7win16b, "drawmode7win16b" },
+    { ZID_drawmode7win16bd, "drawmode7win16bd" },
+    { ZID_processmode7hires16b, "processmode7hires16b" },
+    { ZID_processmode7hires16bd, "processmode7hires16bd" },
+    { ZID_drawmode7ngextbg16b, "drawmode7ngextbg16b" },
+    { ZID_drawmode7ngextbg216b, "drawmode7ngextbg216b" },
+};
+static void leaf(u32 id)
+{
+    if (vd_trace) { const char *nm = "?"; for (unsigned i = 0; i < sizeof vd_names / sizeof *vd_names; i++) if (vd_names[i].id == id) nm = vd_names[i].n;
+        fprintf(stderr, "L %s %x %x %x %x %x\n", nm, EBX, ESI - Z32(vidbuffer, 0), EAX, ECX, EDX); }
+    zl_mcall(id);
+}
 
 /* ngsub / ngmain: return 1 when the line is to be skipped */
 static int ng_skip(int main, u32 ebx, u32 m)
@@ -43,16 +76,21 @@ static int ng_skip(int main, u32 ebx, u32 m)
     return 0;
 }
 
-static void call_line(u32 fn, u32 esi, u32 ebx)    /* push esi; eax=cpalval[ebx]; CPalPtrng=eax; call fn; pop esi */
+/* Only esi is saved around the calls (push esi / pop esi); ebx is whatever the drawer leaves, exactly as in the asm: some drawers
+ * return with a clobbered ebx and the macros then carry on with it. */
+static u32 call_line(u32 fn, u32 esi, u32 ebx)    /* push esi; eax=cpalval[ebx]; CPalPtrng=eax; call fn; pop esi */
 {
     EAX = L32(A(cpalval) + ebx * 4); Z32(CPalPtrng, 0) = EAX;
-    zl_mcall(fn);
-    ESI = esi; EBX = ebx;
+    leaf(fn);
+    ESI = esi;
+    return EBX;
 }
-static void call_plain(u32 fn, u32 esi, u32 ebx)   /* push esi; call fn; pop esi */
+static u32 call_plain(u32 fn, u32 esi, u32 ebx)   /* push esi; call fn; pop esi */
 {
-    zl_mcall(fn);
-    ESI = esi; EBX = ebx;
+    (void)ebx;
+    leaf(fn);
+    ESI = esi;
+    return EBX;
 }
 
 /* Procbgpr016b (bg3 = 0) / Procbg3pr016b (bg3 = 1) */
@@ -67,7 +105,7 @@ static void proc_bg_pr0(int bg, u32 linefn, u32 tilefn, int main, u32 mask, int 
         ECX = L32(A(BG1SYl) + ebx * 2 + bg * 512) & 0xFFFF; ECX += ebx;
         if ((ECX & 7) == 0) goto tilecheck;
     proclinebyline:
-        call_line(linefn, esi, ebx);
+        ebx = call_line(linefn, esi, ebx);
     nogo:
         ebx++; esi += LINE_STRIDE; EBX = ebx; ESI = esi;
         if (Z16(resolutn, 0) != (u16)ebx) continue;
@@ -100,7 +138,7 @@ static void proc_bg_pr0(int bg, u32 linefn, u32 tilefn, int main, u32 mask, int 
     nomosaic:
         set_ax(Z16(resolutn, 0)); set_ax(EAX - 8);
         if ((u16)ebx >= (u16)EAX) goto proclinebyline;
-        call_plain(tilefn, esi, ebx);
+        ebx = call_plain(tilefn, esi, ebx);
         ebx += 8; esi += LINE_STRIDE * 8; EBX = ebx; ESI = esi;
         if (Z16(resolutn, 0) > (u16)ebx) continue;
         return;
@@ -119,13 +157,13 @@ static void proc_bg_pr1(int kind, u32 linefn, u32 tilefn, u32 prarr, int main, u
         if (kind == 1) { if (Z8(BGMA, ebx) == 1 && Z8(BG3PRI, ebx) != 0) goto nogo; }
         else if (kind == 2) { if (Z8(BGMA, ebx) != 1) goto nogo; if (Z8(BG3PRI, ebx) == 0) goto nogo; }
         if (L8(prarr + ebx) == 1) goto tile;
-        call_line(linefn, esi, ebx);
+        ebx = call_line(linefn, esi, ebx);
     nogo:
         ebx++; esi += LINE_STRIDE; EBX = ebx; ESI = esi;
         if (Z16(resolutn, 0) != (u16)ebx) continue;
         return;
     tile:
-        call_line(tilefn, esi, ebx);
+        ebx = call_line(tilefn, esi, ebx);
         ebx += 8; esi += LINE_STRIDE * 8; EBX = ebx; ESI = esi;
         if (Z16(resolutn, 0) > (u16)ebx) continue;
         return;
@@ -149,9 +187,9 @@ static void proc_spr(int kind, int main, u32 mask)
         Z8(sprtlng, ebx)++;
         if (!(Z8(sprleftpr, ebx * 4 + (EAX & 0xFF)) & 1)) goto nogo;
         if ((ECX & 0xFF) == 0) goto nogo;
-        if (Z8(SpecialLine, ebx) & 2) { set_cl(Z8(sprlefttot, ebx)); zl_mcall(ZID_drawsprng16bhr); }
-        else zl_mcall(ZID_drawsprng16b);
-        ESI = esi; EBX = ebx;
+        if (Z8(SpecialLine, ebx) & 2) { set_cl(Z8(sprlefttot, ebx)); leaf(ZID_drawsprng16bhr); }
+        else leaf(ZID_drawsprng16b);
+        ESI = esi; ebx = EBX;
     nogo:
         ebx++; esi += LINE_STRIDE; EBX = ebx; ESI = esi;
         if (Z16(resolutn, 0) != (u16)ebx) continue;
@@ -227,10 +265,10 @@ static void proc_mode7(int main, u32 mask)
             m7_setup(&esi, ebx);
             ebx = line; EBX = ebx;
             eax = EAX; edx = EDX;
-            if (Z8(scadsng, ebx) & 1) zl_mcall(ZID_drawmode7win16bd); else zl_mcall(ZID_drawmode7win16b);
+            if (Z8(scadsng, ebx) & 1) leaf(ZID_drawmode7win16bd); else leaf(ZID_drawmode7win16b);
             EBX = ebx; ESI = esi; EDX = edx; EAX = eax;
             if (Z8(Mode7HiRes16b, 0) != 0 && Z8(scanlines, 0) == 0) {
-                if (Z8(scadsng, ebx) & 1) zl_mcall(ZID_processmode7hires16bd); else zl_mcall(ZID_processmode7hires16b);
+                if (Z8(scadsng, ebx) & 1) leaf(ZID_processmode7hires16bd); else leaf(ZID_processmode7hires16b);
                 ebx = EBX;
             }
         }
@@ -259,9 +297,9 @@ static void proc_mode7_ext(int variant, int main, u32 mask)
         if (variant == 1) L8(esi - 1) = 1;
         {
             u32 line = ebx;
-            m7_setup(&esi, ebx);
-            ESI = esi; EBX = line;
-            zl_mcall(variant == 1 ? ZID_drawmode7ngextbg16b : ZID_drawmode7ngextbg216b);
+            m7_setup(&esi, ebx);                 /* ebx stays the mosaic-adjusted line here (no pop before the call) */
+            ESI = esi;
+            leaf(variant == 1 ? ZID_drawmode7ngextbg16b : ZID_drawmode7ngextbg216b);
             esi = ESI = esi; ebx = EBX = line;
         }
     nogo:
@@ -312,13 +350,20 @@ static void layers(int main)
     if (Z8(modeused, 7) != 0 && CM(m_m7)) proc_mode7(main, 1);
     /* sprites (all) */
     if (!SD(0x10) && CM(m_spr)) proc_spr(0, main, 0x10);
-    /* BG2 pr1 */
-    if (!SD(2) && CM(m_bg2)) {
-        EAX = Z32(bg2totng, 0);
-        if (EAX != Z32(bg2drwng, 0)) { Z32(mode0ads, 0) = 0x20202020; proc_bg_pr1(0, ZID_drawbg2linepr116b, ZID_drawbg2tilepr116b, A(prdata), main, 2); }
+    /* BG2 pr1 and EXTBG 2: the sub screen pass runs BG2 first, the main screen pass EXTBG 2 first */
+    if (!main) {
+        if (!SD(2) && CM(m_bg2)) {
+            EAX = Z32(bg2totng, 0);
+            if (EAX != Z32(bg2drwng, 0)) { Z32(mode0ads, 0) = 0x20202020; proc_bg_pr1(0, ZID_drawbg2linepr116b, ZID_drawbg2tilepr116b, A(prdata), main, 2); }
+        }
+        if (Z8(ngextbg, 0) != 0 && CM(m_ext)) proc_mode7_ext(2, main, 2);
+    } else {
+        if (Z8(ngextbg, 0) != 0 && CM(m_ext)) proc_mode7_ext(2, main, 2);
+        if (!SD(2) && CM(m_bg2)) {
+            EAX = Z32(bg2totng, 0);
+            if (EAX != Z32(bg2drwng, 0)) { Z32(mode0ads, 0) = 0x20202020; proc_bg_pr1(0, ZID_drawbg2linepr116b, ZID_drawbg2tilepr116b, A(prdata), main, 2); }
+        }
     }
-    /* EXTBG 2 */
-    if (Z8(ngextbg, 0) != 0 && CM(m_ext)) proc_mode7_ext(2, main, 2);
     /* sprites mode 2-7 */
     if (!SD(0x10) && ((Z32(modeused, 0) & 0x01010000) || (Z32(modeused, 4) & 0x01010101)) && CM(m_spr)) proc_spr(2, main, 0x10);
     /* BG1 pr1 */
@@ -343,6 +388,7 @@ void zl_StartDrawNewGfx16b(void)
 {
     u32 saved_edx = EDX, saved_esi = ESI, saved_edi = LG.edi, saved_ebp = EBP;
     int i;
+    { const char *e = getenv("ZL_VD_TRACE"); vd_trace = e && ++vd_calls_n == atoi(e); }
     Z8(WindowRedraw, 0) = 1;
     Z32(endlinet, 0) -= 8;
     if (Z32(scfbl, 0) != 0) goto dontdraw;
