@@ -1,3 +1,4 @@
+#include "zlift.h"
 /*
 Copyright (C) 1997-2005 ZSNES Team ( zsKnight, _Demo_, pagefault, Nach )
 
@@ -611,7 +612,7 @@ void getcfg()
   _forceauto = 0;
   
   //open file
-  ZOpenFileName = CMDLineStr;
+  ZSETP(ZOpenFileName, CMDLineStr);
   ZOpenMode = 0;
   i = ZOpenFile();
   if (-1 != i)
@@ -623,7 +624,7 @@ void getcfg()
     _eofile = 0;
     ZFileReadHandle = _fileloc;
     ZFileReadSize = 1;
-    ZFileReadBlock = &_cchar;
+    ZSETP(ZFileReadBlock, &_cchar);
 
     do
     {

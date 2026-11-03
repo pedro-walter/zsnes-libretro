@@ -1,3 +1,4 @@
+#include "zlift.h"
 /*
 Copyright (C) 1997-2005 ZSNES Team ( zsKnight, _Demo_, pagefault, Nach )
 
@@ -87,7 +88,7 @@ void BackupCVFrame()
 	memcpyinc (curpos, &SA1Status, 3);
 	memcpyinc (curpos, &prevedi, 1*4);
 	memcpyinc (curpos, &SA1xpc, 1*4);
-	memcpyinc (curpos, &SA1RAMArea, 6*4);
+	memcpyinc (curpos, ZADDR(SA1RAMArea), 6*4);
 	memcpyinc (curpos, &sa1dmaptr, 2*4);
     }
 
@@ -193,7 +194,7 @@ void RestoreCVFrame()
 	memcpyrinc (curpos, &SA1Status, 3);
 	memcpyrinc (curpos, &prevedi, 1*4);
 	memcpyrinc (curpos, &SA1xpc, 1*4);
-	memcpyrinc (curpos, &SA1RAMArea, 6*4);
+	memcpyrinc (curpos, ZADDR(SA1RAMArea), 6*4);
 	memcpyrinc (curpos, &sa1dmaptr, 2*4);
     }
 

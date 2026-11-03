@@ -1,3 +1,4 @@
+#include "zlift.h"
 /*
 Copyright (C) 1997-2005 ZSNES Team ( zsKnight, _Demo_, pagefault, Nach )
 
@@ -55,7 +56,7 @@ void *doMemAlloc(int size)
 
 void allocspc7110()
 {
-  spc7110romptr = (unsigned char *)doMemAlloc(8192*1024+4096);
+  ZSETP(spc7110romptr, doMemAlloc(8192*1024+4096));
 }
 
 extern bool input1gp;

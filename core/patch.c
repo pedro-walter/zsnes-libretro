@@ -1,3 +1,4 @@
+#include "zlift.h"
 /*
 Copyright (C) 1997-2005 ZSNES Team ( zsKnight, _Demo_, pagefault, Nach )
 
@@ -289,7 +290,7 @@ void findZipIPS(char *compressedfile)
   //Open file
   unzOpenCurrentFile(IPSPatch.zipfile);
 
-  patchfile = 0;
+  ZSETP(patchfile, 0);
   IPSPatch.file_size = (unsigned int)cFileInfo.uncompressed_size;
   IPSPatch.data = (unsigned char *)doMemAlloc(BUFFER_SIZE);
   IPSPatch.proccessed = 0;

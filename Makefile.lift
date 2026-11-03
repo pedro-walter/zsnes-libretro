@@ -1,0 +1,44 @@
+# Lifted (x86 asm -> C) build:  make -f Makefile.lift BITS=32|64
+BITS ?= 64
+L     := build/lift
+O     := build/lift$(BITS)
+CC    := gcc -m$(BITS)
+CFL   := -O1 -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore -D__LINUX__ -DNO_PNG -DLIFTED
+LIFTC := $(wildcard $(L)/lift_*.c)
+LOBJ  := $(patsubst $(L)/%.c,$(O)/%.o,$(LIFTC))
+
+all: $(O)/zsnes_lifted.so
+$(O)/%.o: $(L)/%.c tools/lift/lift.h tools/lift/lift_mmx.h
+	@mkdir -p $(O)
+	$(CC) $(CFL) -c -o $@ $<
+$(O)/lift_rt.o: tools/lift/lift_rt.c tools/lift/lift.h
+	@mkdir -p $(O)
+	$(CC) $(CFL) -c -o $@ $<
+$(O)/lift_data.o: $(L)/lift_data.bin
+	@mkdir -p $(O)
+	printf '.section .rodata\n.globl lift_data_bin\nlift_data_bin:\n.incbin "$(L)/lift_data.bin"\n.globl lift_data_bin_len\nlift_data_bin_len:\n.long %d\n' $$(stat -c %s $(L)/lift_data.bin) > $(O)/lift_data.s
+	$(CC) -c -o $@ $(O)/lift_data.s
+
+# C sources shared with the guest: variables are moved into the arena by tools/lift/cfix.py
+CSRCS := core/initc.c core/uic.c core/cfgload.c core/patch.c core/version.c core/linux/zfilew.c core/linux/ztcp.c \
+         core/chips/dsp1emu.c core/chips/seta10.c core/chips/sdd1emu.c core/cpu/executec.c \
+         core/effects/burn.c core/effects/water.c core/effects/smoke.c libretro/platform.c libretro/libretro.c
+CFIXED := $(patsubst %.c,$(O)/c/%.c,$(notdir $(CSRCS)))
+COBJ   := $(patsubst %.c,$(O)/c/%.o,$(notdir $(CSRCS)))
+$(O)/c/cfixed.stamp: $(CSRCS) $(L)/lift_cvars.txt tools/lift/cfix.py
+	@mkdir -p $(O)/c
+	python3 tools/lift/cfix.py $(L)/lift_cvars.txt $(O)/c $(CSRCS)
+	touch $@
+$(O)/c/%.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
+	$(CC) $(CFL) -include tools/lift/lift_cdefs.h -I$(dir $(firstword $(CSRCS))) -Icore/linux -Icore/chips -Icore/cpu -Icore/effects -c -o $@ $(O)/c/$*.c
+
+$(O)/zsnes_lifted.so: $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(L)/lift_syms.ld
+	$(CC) -shared -o $@ $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(L)/lift_syms.ld -lm
+
+# Regenerate the lifted C from the pristine upstream asm objects (build/ref/**/*.ao, built by the main Makefile) and
+# rebuild.  Needs python3 with capstone + pyelftools.
+gen:
+	$(MAKE) -f Makefile refexe-bin
+	python3 tools/lift/gen.py $(L)
+	cp tools/lift/lift.h tools/lift/lift_mmx.h $(L)/
+.PHONY: all gen

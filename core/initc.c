@@ -1,3 +1,4 @@
+#include "zlift.h"
 /*
 Copyright (C) 1997-2005 ZSNES Team ( zsKnight, _Demo_, pagefault, Nach )
 
@@ -209,12 +210,12 @@ void CheckIntlEHi(unsigned char *ROM)
 
     //Now the other one
     NumofBanks = oldNumBanks - 128;
-    romdata += 0x100000; //Ofset pointer
+    ZADDP(romdata, unsigned int, 0x100000); //Ofset pointer
     deintlv1();
 
     //Now fix the data and we're done
     NumofBanks = oldNumBanks;
-    romdata -= 0x100000;
+    ZADDP(romdata, unsigned int, -0x100000);
 
     Interleaved = true;
   }
@@ -1643,7 +1644,7 @@ void SPC7PackIndexLoad()
   }
 
   //Set the pointer to after the slash - needed for sa1regs.asm
-  SPC7110filep = SPC7110nfname+strlen(SPC7110nfname);
+  ZSETP(SPC7110filep, SPC7110nfname+strlen(SPC7110nfname));
 
   //Index file;
   strcat(SPC7110nfname, "index.bin");

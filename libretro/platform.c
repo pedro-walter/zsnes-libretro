@@ -46,9 +46,15 @@ extern unsigned int pl2upk, pl2downk, pl2leftk, pl2rightk, pl2startk, pl2selk,
 
 /* The original asm does not preserve ebx/esi/edi/ebp (ebx is the GOT pointer in PIC code),
  * so every C->asm call goes through this register-saving trampoline. */
+#ifdef LIFTED
+#include "lift.h"
+/* the asm routines are lifted C running on the guest arena: guest function symbols are code ids */
+#define zs_call_asm(fn) lift_call((u32)(uintptr_t)(fn))
+#else
 __asm__(".text\n.globl zs_call_asm\n.type zs_call_asm,@function\nzs_call_asm:\n"
         "  pushal\n  movl 36(%esp),%eax\n  cld\n  call *%eax\n  popal\n  ret\n");
 extern void zs_call_asm(void (*fn)(void));
+#endif
 
 /* ---- variables the asm expects the platform layer to provide ---- */
 int numlockptr, MouseButton, MouseX, MouseY, MouseMove2X, MouseMove2Y;
@@ -57,10 +63,14 @@ int T36HZEnabled, T60HZEnabled;
 
 /* used by the video blit routines in copyvwin.asm */
 unsigned int ScreenPtr, SurfBufD, pitch;
-int SurfaceX = 256, SurfaceY = 224;
+int SurfaceX, SurfaceY;   /* initial values 256/224 are set in initwinvideo */
 
 /* ---- shared state with libretro.c ---- */
+#ifdef LIFTED
+uint16_t *zs_fbp;   /* framebuffer lives in the guest arena (the blitter writes it through a 32-bit pointer) */
+#else
 uint16_t zs_framebuf[ZS_MAX_W * ZS_MAX_H];
+#endif
 unsigned zs_width = 256, zs_height = 224;
 int zs_frame_ready;
 uint16_t zs_pad[2];  /* RETRO_DEVICE_ID_JOYPAD_* bitmask per port */
@@ -113,6 +123,11 @@ static void emu_entry(void)
 
 int zs_start(const char *rom_path)
 {
+#ifdef LIFTED
+    if (!lift_init()) return 0;
+    if (!zs_fbp) zs_fbp = zl_malloc(sizeof(uint16_t) * ZS_MAX_W * ZS_MAX_H);
+    if (!zs_fbp) return 0;
+#endif
     unsigned char *f = fname;
     size_t n = strlen(rom_path);
     if (n > 126) n = 126;
@@ -207,7 +222,7 @@ void initwinvideo(void)
 
 void clearwin(void)
 {
-    memset(zs_framebuf, 0, sizeof(zs_framebuf));
+    memset(zs_framebuf, 0, sizeof(uint16_t) * ZS_MAX_W * ZS_MAX_H);
 }
 
 void UpdateVFrame(void)
@@ -226,7 +241,7 @@ void drawscreenwin(void)
     if (resolutn == 239) ScreenPtr += 8 * 288 * 2;
 
     pitch = ZS_MAX_W * 2;
-    SurfBufD = (unsigned int)zs_framebuf;
+    SurfBufD = (unsigned int)(uintptr_t)zs_framebuf;
     zs_call_asm(DrawWin256x224x16);
     zs_width = 256;
     zs_height = 224;
@@ -238,12 +253,6 @@ void drawscreenwin(void)
 int zs_audio_chunk(int16_t *out)
 {
     int i;
-    if (getenv("ZS_DSPDBG")) {
-        extern unsigned char SoundInterpType, MMXSupport, StereoSound, LowPassFilterType, cfgecho, Surround, RevStereo, DSPMem[], echoon0[], Voice0Status[], Voice0Disable[];
-        extern unsigned int BufferSizeB, MaxEcho, FIRTAPVal0, FIRTAPVal1;
-        static int n;
-        if ((n++ % 400) == 0) fprintf(stderr, "dsp interp=%d mmx=%d stereo=%d lpf=%d echodis=%d surr=%d rev=%d bufB=%u maxecho=%u fir0=%d fir1=%d flg=%02x eon=%02x pmon=%02x non=%02x status=%d%d%d%d%d%d%d%d\n", SoundInterpType, MMXSupport, StereoSound, LowPassFilterType, cfgecho, Surround, RevStereo, BufferSizeB, MaxEcho, FIRTAPVal0, FIRTAPVal1, DSPMem[0x6c], DSPMem[0x4d], DSPMem[0x2d], DSPMem[0x3d], Voice0Status[0],Voice0Status[1],Voice0Status[2],Voice0Status[3],Voice0Status[4],Voice0Status[5],Voice0Status[6],Voice0Status[7]);
-    }
     zs_call_asm(SoundProcess);  /* sets buffer sizes and runs ProcessSoundBuffer */
     for (i = 0; i < 256; i++) {
         int v = DSPBuffer[i];

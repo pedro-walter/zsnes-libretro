@@ -6,7 +6,8 @@
 D="$(cd "$(dirname "$0")/.." && pwd)"; ROM="$1"; CAND="${2:-$D/build/zsnes_libretro.so}"; N="${3:-4500}"
 REF="$D/refs/zsnes_asm_ref.so"; W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 [ -f "$REF" ] || { echo "no reference core; run: make ref"; exit 2; }
-run() { HARNESS_DIR="$W" "$D/build/harness" "$1" "$ROM" -f "$N" -t 1e62:2,1ff6:2,1ffc:2 -T "$W/$2.trace" -s "$(seq -s, 100 100 "$N")" | grep -E "^frame|^done" > "$W/$2.out"; }
+H() { if head -c 5 "$1" | od -An -tx1 | grep -q "02"; then echo "$D/build/harness64"; else echo "$D/build/harness"; fi; }
+run() { HARNESS_DIR="$W" "$(H "$1")" "$1" "$ROM" -f "$N" -t 1e62:2,1ff6:2,1ffc:2 -T "$W/$2.trace" -s "$(seq -s, 100 100 "$N")" | grep -E "^frame|^done" > "$W/$2.out"; }
 run "$REF" ref; run "$CAND" cand
 if cmp -s "$W/ref.trace" "$W/cand.trace"; then echo "WRAM trace (fuel/demo/frame counter): IDENTICAL over $N frames"; else
   echo "WRAM trace DIFFERS; first divergence:"; diff "$W/ref.trace" "$W/cand.trace" | head -4; fi
@@ -16,7 +17,7 @@ if cmp -s "$W/ref.out" "$W/cand.out"; then echo "video CRCs + audio CRC: IDENTIC
 # headless shim; `make golden`).  Sampled at draw time, aligned from the first game frame (frame counter = 1).
 GOLD="$D/refs/golden_topgear_e_zsnes_exe.txt"; rc=0
 if [ -f "$GOLD" ]; then   # golden is Top Gear (Europe) only; for other ROMs this check is skipped
-  ZS_WRAM_AT_DRAW=1 HARNESS_DIR="$W" "$D/build/harness" "$CAND" "$ROM" -f 4300 -t 1e62:2,1ff6:2,1ffc:2 -T "$W/gold.trace" >/dev/null 2>&1
+  ZS_WRAM_AT_DRAW=1 HARNESS_DIR="$W" "$(H "$CAND")" "$CAND" "$ROM" -f 4300 -t 1e62:2,1ff6:2,1ffc:2 -T "$W/gold.trace" >/dev/null 2>&1
   python3 -I - "$W/gold.trace" "$GOLD" <<'PY' || rc=1
 import sys
 c=[l.split()[1:] for l in open(sys.argv[1])]; g=[l.split() for l in open(sys.argv[2])]

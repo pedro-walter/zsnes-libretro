@@ -1,3 +1,4 @@
+#include "zlift.h"
 /*
 Copyright (C) 1997-2005 ZSNES Team ( zsKnight, _Demo_, pagefault, Nach )
 
@@ -484,7 +485,7 @@ void obtaindir()
   tmp = opendir(zcfgdir);
   if (tmp == NULL) 
   {
-    MKPath = zcfgdir;
+    ZSETP(MKPath, zcfgdir);
     ZFileMKDir();
   } 
   else 
@@ -535,7 +536,7 @@ void pushdir()
 
 void popdir()
 {
-	CHPath = olddir;
+	ZSETP(CHPath, olddir);
 	ZFileCHDir();
 	free(olddir);
 	olddir = NULL;
