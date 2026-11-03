@@ -3,10 +3,11 @@ BITS ?= 64
 OSDEF ?= -D__LINUX__
 ASFLAGS ?= -Wa,--noexecstack
 LDLIBS ?= -lm
+SYMLD ?= $(L)/lift_syms.ld
 L     := build/lift
 O     ?= build/lift$(BITS)
 CC    := gcc -m$(BITS)
-CFL   := $(CFEXTRA) -O1 -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore $(OSDEF) -DNO_PNG -DLIFTED
+CFL   := $(CFEXTRA) -O1 -ffp-contract=off -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore $(OSDEF) -DNO_PNG -DLIFTED
 LIFTC := $(wildcard $(L)/lift_*.c)
 LOBJ  := $(patsubst $(L)/%.c,$(O)/%.o,$(LIFTC))
 
@@ -50,8 +51,8 @@ $(O)/c/dsp1emu.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
 $(O)/c/%.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
 	$(CC) $(CFL) -include tools/lift/lift_cdefs.h -I$(dir $(firstword $(CSRCS))) -Icore/linux -Icore/chips -Icore/cpu -Icore/effects -c -o $@ $(O)/c/$*.c
 
-$(O)/zsnes_lifted.so: $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(HOBJ) $(L)/lift_syms.ld
-	$(CC) -shared -o $@ $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(HOBJ) $(L)/lift_syms.ld $(LDLIBS)
+$(O)/zsnes_lifted.so: $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(HOBJ) $(SYMLD)
+	$(CC) -shared -o $@ $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(HOBJ) $(SYMLD) $(LDLIBS)
 
 # Regenerate the lifted C from the pristine upstream asm objects (build/ref/**/*.ao, built by the main Makefile) and
 # rebuild.  Needs python3 with capstone + pyelftools.
@@ -82,7 +83,7 @@ distwin64:
 	$(MAKE) -f Makefile.lift CC=x86_64-w64-mingw32-gcc BITS=64 FPX=-mfpmath=387 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win64 -j8
 	mkdir -p dist && cp build/win64/zsnes_lifted.so dist/zsnes_libretro_win64.dll
 distwin32:
-	$(MAKE) -f Makefile.lift CC=i686-w64-mingw32-gcc BITS=32 FPX= 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win32 -j8
+	$(MAKE) -f Makefile.lift SYMLD=$(L)/lift_syms_u.ld CC=i686-w64-mingw32-gcc BITS=32 FPX= 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win32 -j8
 	mkdir -p dist && cp build/win32/zsnes_lifted.so dist/zsnes_libretro_win32.dll
 distarm64:
 	$(MAKE) -f Makefile.lift CC=aarch64-linux-gnu-gcc BITS=64 FPX= O=build/arm64 -j8

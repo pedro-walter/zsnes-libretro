@@ -283,6 +283,9 @@ def main():
         f.write('    0 };\nconst char *const lift_ovr_names[] = {\n')
         for a, c, tail, key in ovr_list: f.write('    "%s",\n' % a)
         f.write('    0 };\nconst int lift_ovr_count = %d;\n' % len(ovr_list))
+        f.write('const char *const lift_ovr_cnames[] = {\n')
+        for a, c, tail, key in ovr_list: f.write('    "%s",\n' % c)
+        f.write('    0 };\n')
         f.write('const unsigned short lift_ovr_flags[] = {\n')
         for a, c, tail, key in ovr_list: f.write('    %d,\n' % tail)
         f.write('    0 };\n')
@@ -302,11 +305,13 @@ def main():
         for n, a in syms: f.write('    "%s",\n' % n)
         f.write('    0 };\nconst int lift_sym_count = %d;\n' % len(syms))
     NOEXPORT = {'zs_mcall', 'zs_call_asm'}
-    with open(os.path.join(outdir, 'lift_syms.ld'), 'w') as f:
-        for name, a in sorted(list(P.gdata.items()) + list(P.ldata.items())): f.write('%s = 0x%x;\n_%s = 0x%x;\n' % (name, a, name, a))   # _name: 32-bit PE decoration
-        for name, a in sorted(P.foreign_vars.items()): f.write('%s = 0x%x;\n_%s = 0x%x;\n' % (name, a, name, a))
-        for name, (oi, off) in sorted(P.gtext.items()):
-            if name not in NOEXPORT: f.write('%s = 0x%x;\n_%s = 0x%x;\n' % (name, objs.code_id(oi, off), name, objs.code_id(oi, off)))
+    # lift_syms.ld: absolute symbols for the guest; lift_syms_u.ld: the same with a leading underscore (32-bit PE decoration)
+    for fname, pre in (('lift_syms.ld', ''), ('lift_syms_u.ld', '_')):
+        with open(os.path.join(outdir, fname), 'w') as f:
+            for name, a in sorted(list(P.gdata.items()) + list(P.ldata.items())): f.write('%s%s = 0x%x;\n' % (pre, name, a))
+            for name, a in sorted(P.foreign_vars.items()): f.write('%s%s = 0x%x;\n' % (pre, name, a))
+            for name, (oi, off) in sorted(P.gtext.items()):
+                if name not in NOEXPORT: f.write('%s%s = 0x%x;\n' % (pre, name, objs.code_id(oi, off)))
     OVR = {'malloc': 'zl_malloc', 'free': 'zl_free', 'putchar': 'zl_putchar', 'getchar': 'zl_getchar'}
     with open(os.path.join(outdir, 'lift_ext_tab.c'), 'w') as f:
         f.write('/* generated */\n')

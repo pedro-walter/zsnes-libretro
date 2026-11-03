@@ -24,7 +24,9 @@ extern int lift_once;                       /* run the original body for the nex
 extern u32 (*const lift_ovr_fns[])(void);       /* return 0 = act as the function's ret, else code id to jump to */
 extern const char *const lift_ovr_names[];
 extern const int lift_ovr_count;
-extern const unsigned lift_ovr_ids[]; extern const unsigned short lift_ovr_flags[];   /* 1 = tail-style (returns next pc), 2 = register results don't matter, 0x8000|mask<<8 = compare only these regs */
+extern const unsigned lift_ovr_ids[]; extern const char *const lift_ovr_cnames[];
+extern int zl_ovr_off(const char *cname);      /* LIFT_NOOVR=substr,substr (or all) disables overrides for bisecting */
+extern const unsigned short lift_ovr_flags[];   /* 1 = tail-style (returns next pc), 2 = register results don't matter, 0x8000|mask<<8 = compare only these regs */
 void zl_orig(u32 id);
 void zl_mcall(u32 id);
 void zl_dual_protect(void *p, unsigned long n);

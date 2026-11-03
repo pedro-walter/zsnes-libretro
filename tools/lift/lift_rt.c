@@ -239,6 +239,18 @@ __attribute__((destructor)) static void prof_dump(void)
     if (atoi(e) >= 2) { int i; qsort(prof2, PROFN, sizeof prof2[0], prof_cmp); for (i = 0; i < 60 && prof2[i].n; i++) { u32 off; const char *n = text_name(prof2[i].pc, &off); fprintf(stderr, "PROFPC %s+0x%x %llu\n", n, off, prof2[i].n); } }
 }
 int lift_orig, lift_once;
+int zl_ovr_off(const char *cname)
+{
+    static const char *e; static int init;
+    char buf[512], *t, *sv;
+    if (!init) { e = getenv("LIFT_NOOVR"); init = 1; }
+    if (!e) return 0;
+    if (!strcmp(e, "all")) return 1;
+    strncpy(buf, e, sizeof buf - 1); buf[sizeof buf - 1] = 0;
+    for (t = strtok_r(buf, ",", &sv); t; t = strtok_r(NULL, ",", &sv)) if (strstr(cname, t)) return 1;
+    return 0;
+}
+static unsigned char ovr_dis[8192];
 /* code id of an overridden asm label -> override index (so dispatch can skip the lifted guard) */
 #define OVH 4096
 static short ovr_tab[OVH];
@@ -254,6 +266,7 @@ static void ovr_build(void)
         while (ovr_tab[h] >= 0) h = (h + 1) & (OVH - 1);
         ovr_tab[h] = (short)k;
     }
+    for (k = 0; k < lift_ovr_count && k < 8192; k++) ovr_dis[k] = (unsigned char)zl_ovr_off(lift_ovr_cnames[k]);
     ovr_built = 1;
 }
 static inline int ovr_find(u32 id)
@@ -273,6 +286,8 @@ u32 lift_run(u32 pc)
         if (o == (SENT_ID >> 21)) return pc;
         if (o == 0x7C) {      /* C override of an asm function (register ABI through LG); acts as the function's ret */
             { u32 k = pc & 0x1FFFFF, nx;
+              if (!ovr_built) ovr_build();
+              if (ovr_dis[k]) { if (!lift_ovr_ids[k]) die("cannot disable table-installed override %s", lift_ovr_cnames[k]); lift_once = 1; pc = lift_ovr_ids[k]; continue; }
               if (dual_wanted(k)) { dual_run(k); nx = 0; } else nx = lift_ovr_fns[k]();
               if (nx) { pc = nx; continue; } }
             pc = M32(LG.esp); LG.esp += 4;
@@ -287,7 +302,7 @@ u32 lift_run(u32 pc)
             int k;
             if (!ovr_built) ovr_build();
             k = ovr_find(pc);
-            if (k >= 0) {
+            if (k >= 0 && !ovr_dis[k]) {
                 u32 nx;
                 if (dual_wanted((u32)k)) { dual_run((u32)k); nx = 0; } else nx = lift_ovr_fns[k]();
                 if (nx) { pc = nx; continue; }
