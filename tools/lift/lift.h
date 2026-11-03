@@ -24,6 +24,7 @@ extern const char *const lift_ovr_names[];
 extern const int lift_ovr_count;
 extern const unsigned lift_ovr_ids[]; extern const unsigned short lift_ovr_flags[];   /* 1 = tail-style (returns next pc), 2 = register results don't matter, 0x8000|mask<<8 = compare only these regs */
 void zl_orig(u32 id);
+void zl_mcall(u32 id);
 void zl_dual_protect(void *p, unsigned long n);
 extern const unsigned lift_sym_addr[]; extern const char *const lift_sym_name[]; extern const int lift_sym_count;
 void zl_dual_ignore(u32 addr, u32 len);       /* exclude a range from differential comparison */

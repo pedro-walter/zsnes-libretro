@@ -209,6 +209,8 @@ static unsigned long long prof[128];
 __attribute__((destructor)) static void prof_dump(void)
 { if (!getenv("LIFT_PROF")) return; for (int i = 0; i < 128; i++) if (prof[i]) fprintf(stderr, "PROF %s %llu\n", oname((u32)i << 21), prof[i]); }
 int lift_orig;
+/* call a guest function with the registers in LG (results stay in LG) */
+void zl_mcall(u32 id) { LG.esp -= 4; M32(LG.esp) = SENT_ID; lift_run(id); }
 void zl_orig(u32 id) { LG.esp -= 4; M32(LG.esp) = SENT_ID; lift_orig++; lift_run(id); lift_orig--; }
 u32 lift_run(u32 pc)
 {

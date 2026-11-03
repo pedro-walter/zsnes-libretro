@@ -9,7 +9,14 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <dlfcn.h>
+#ifdef NO_ZLIB   /* cross builds without zlib: own crc32, no PNG compression */
+typedef unsigned char Bytef; typedef unsigned long uLong, uLongf;
+static uLong crc32(uLong c0, const Bytef *d, unsigned n) { unsigned c = ~(unsigned)c0; while (n--) { c ^= *d++; for (int k = 0; k < 8; k++) c = (c >> 1) ^ (0xEDB88320u & -(c & 1)); } return ~c; }
+static uLong compressBound(uLong n) { return n + n / 1000 + 64; }
+static int compress(Bytef *z, uLongf *zn, const Bytef *r, uLong n) { *zn = 0; (void)z; (void)r; (void)n; return 0; }
+#else
 #include <zlib.h>
+#endif
 #include "../libretro/libretro.h"
 
 static uint16_t cur_mask;
