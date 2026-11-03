@@ -21,13 +21,13 @@ Needs `nasm`, `gcc` (with `-m32` support for the reference/asm objects: `gcc-mul
     make -f Makefile.lift dist64               # Linux x86-64   -> dist/zsnes_libretro.so (+ .info)
     make -f Makefile.lift distwin64            # Windows x64    -> dist/zsnes_libretro_win64.dll
     make -f Makefile.lift distarm64 distarm32  # Linux AArch64 / ARMhf -> dist/zsnes_libretro_aarch64.so / _armhf.so
-    make -f Makefile.lift distwin32            # Windows x86 (builds; not run-tested)
+    make -f Makefile.lift distwin32            # Windows x86 (run under wine, identical)
     gcc -O1 -o build/harness64 tools/harness.c -ldl -lz        # headless test frontend (-DNO_ZLIB for cross builds)
     tools/timing_check.sh "<rom>" build/lift64/zsnes_lifted.so 4500
     tools/rom_check.sh "<rom>" <core.so> 2000 <seed>           # any ROM, scripted random input, vs the asm reference
 
 Copy the core to RetroArch's cores directory as `zsnes_libretro.so` (`.dll`) together with `zsnes_libretro.info`.
-Verified identical to the x86-64 core (frame CRCs, WRAM CRC, audio CRC): AArch64 and ARMhf under `qemu-user`, Windows x64
+Verified identical to the x86-64 core (frame CRCs, WRAM CRC, audio CRC): AArch64 and ARMhf under `qemu-user`, Windows x64 and x86
 under `wine`.  All platforms are built with `-ffp-contract=off` (FMA contraction changes the DSP-1 results).
 
 ## How the lifter works (tools/lift)
