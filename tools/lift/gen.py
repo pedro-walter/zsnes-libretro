@@ -12,10 +12,7 @@ SKIP_TEXT = ['video/hq', 'dos/sw', 'dos/debug', 'dos/modemrtn', 'dos/gppro', 'do
 KEEP_TEXT = ['dos/initvid']
 FORCE_ARENA = ['zcfgdir', '_cchar', 'CMDLineStr']   # C buffers whose address is handed to the guest   # text needed even though dos/*
 
-def main():
-    outdir = sys.argv[1]
-    os.makedirs(outdir, exist_ok=True)
-    for old in glob.glob(os.path.join(outdir, 'lift_*.c')): os.remove(old)
+def load_all():
     notsub = lambda p: '/ref/' not in p and '/lift' not in p
     ao = sorted(glob.glob(REFDIR + '/**/*.ao', recursive=True))
     co = sorted(glob.glob(REFDIR + '/**/*.co', recursive=True)) + [os.path.join(ROOT, 'build', 'platform.co')]
@@ -43,6 +40,13 @@ def main():
     for oc in OC.values():
         xdis.resolve_ins(P, oc)
     print('disasm', time.time() - t0, file=sys.stderr)
+    return P, OC, skip, t0
+
+def main():
+    outdir = sys.argv[1]
+    os.makedirs(outdir, exist_ok=True)
+    for old in glob.glob(os.path.join(outdir, 'lift_*.c')): os.remove(old)
+    P, OC, skip, t0 = load_all()
 
     # flag info
     taken = set()          # (objidx, off) address-taken code

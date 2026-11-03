@@ -42,3 +42,11 @@ gen:
 	python3 tools/lift/gen.py $(L)
 	cp tools/lift/lift.h tools/lift/lift_mmx.h $(L)/
 .PHONY: all gen
+
+# ---- per-instruction lifter test (32-bit native vs emitted C) ----
+itest: tools/lift/itest.py tools/lift/itest.c tools/lift/itest.h
+	@mkdir -p build/itest
+	python3 tools/lift/itest.py build/itest
+	gcc -m32 -O1 -w -no-pie -Itools/lift -Ibuild/itest -o build/itest/itest tools/lift/itest.c build/itest/itest_gen.c
+	build/itest/itest $(or $(TRIALS),24)
+.PHONY: itest
