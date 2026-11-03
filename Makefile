@@ -17,7 +17,7 @@ ASM := $(addprefix chips/,sfxproc fxemu2 dsp1proc fxemu2b fxemu2c fxtable sa1pro
        $(addprefix linux/,copyvwin sdlintrf) \
        $(addprefix dos/,debug joy modemrtn vesa2 initvid sw gppro vesa12) \
        endmem init ui vcache
-CSRC := linux/zfilew linux/ztcp linux/zipxw chips/dsp1emu chips/seta10 chips/sdd1emu cpu/executec cpu/spc700c cpu/dspc cpu/dspw cpu/cpuc cpu/dmac cpu/schedc cpu/regw cfgload initc uic patch version \
+CSRC := linux/zfilew linux/ztcp linux/zipxw chips/dsp1emu chips/seta10 chips/sdd1emu cpu/executec cpu/spc700c cpu/dspc cpu/dspw cpu/cpuc cpu/dmac cpu/schedc cpu/regw video/ppu16 diffimg cfgload initc uic patch version \
         effects/burn effects/water effects/smoke
 CXXSRC :=
 

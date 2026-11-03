@@ -68,6 +68,8 @@ EXTSYM NGNumSpr
 EXTSYM fulladdtab
 EXTSYM MMXSupport,bgtxadd2
 
+%include "video/zshim.mac"
+EXTSYM zs_ne16b_c
 %include "video/vidmacro.mac"
 %include "video/newgfx16.mac"
 %include "video/newg162.mac"
@@ -276,7 +278,7 @@ NEWSYM setpalette16bng
     ret
 
 section .data
-prevpal2 times 256 dw 0F00Fh
+NEWSYM prevpal2, times 256 dw 0F00Fh
 section .text
 
 %macro WinBGCheck 1
@@ -431,10 +433,10 @@ section .text
 %endmacro
 
 section .bss
-BackAreaAdd resd 1
-BackAreaUnFillCol resd 1
-BackAreaFillCol resd 1
-clinemainsub    resd 1
+NEWSYM BackAreaAdd, resd 1
+NEWSYM BackAreaUnFillCol, resd 1
+NEWSYM BackAreaFillCol, resd 1
+NEWSYM clinemainsub, resd 1
 section .text
 
 BackAreaFill:
@@ -532,7 +534,8 @@ BackAreaFill:
 .yeswindowb
     ret
 
-NEWSYM newengine16b
+ZSHIM newengine16b, zs_ne16b_c
+NEWSYM newengine16b_asm
     ; store line by line data
     ; BGMode, BGxScrollX, BGxScrollY, both BGPtrs
     mov eax,[curypos]

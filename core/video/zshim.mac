@@ -1,0 +1,23 @@
+; C-port shim: ZSHIM <asm entry name>, <C function>, <env-mode function>
+; The C function receives/returns the machine registers through zs_R (see cpu/cpustub.asm).  The original asm body stays
+; under the name <entry>_asm (define it right after the macro with NEWSYM <entry>_asm).
+EXTSYM zs_R
+%macro ZSHIM 2
+NEWSYM %1
+    mov [zs_R],eax
+    mov [zs_R+4],ecx
+    mov [zs_R+8],edx
+    mov [zs_R+12],ebx
+    mov [zs_R+16],esi
+    mov [zs_R+20],edi
+    mov [zs_R+24],ebp
+    call %2
+    mov eax,[zs_R]
+    mov ecx,[zs_R+4]
+    mov edx,[zs_R+8]
+    mov ebx,[zs_R+12]
+    mov esi,[zs_R+16]
+    mov edi,[zs_R+20]
+    mov ebp,[zs_R+24]
+    ret
+%endmacro

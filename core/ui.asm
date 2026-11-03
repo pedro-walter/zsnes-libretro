@@ -586,9 +586,9 @@ AllocateBlock:
 SECTION .bss
 
 ;ALIGN32
-vbufaptr resd 1
-vbufeptr resd 1
-ngwinptrb resd 1
+NEWSYM vbufaptr, resd 1
+NEWSYM vbufeptr, resd 1
+NEWSYM ngwinptrb, resd 1
 romaptr  resd 1
 vbufcptr resd 1
 NEWSYM vbufdptr, resd 1
