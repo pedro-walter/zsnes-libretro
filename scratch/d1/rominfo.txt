@@ -1,6 +1,0 @@
-This is the info for the last game you ran.
-
-File: Top Gear (USA) CPU NItro.srm Header: No
-TOP GEAR                TYPE:NORMAL     
-INTERLEAVED:No    BANK:Lo    CHKSUM:OK  
-VIDEO:NTSC                CRC32:0F3777BB

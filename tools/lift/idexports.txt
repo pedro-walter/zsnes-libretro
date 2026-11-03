@@ -1,3 +1,10 @@
 # code labels exported as ZID_<name> (. -> _) for hand-written C
 cpu/execute.ao:Donextlinecache
 cpu/execute.ao:execloop.startagain
+chips/sa1regs.ao:sa1chconv
+sa1dmairam
+sa1dmabwram
+StartSFX
+UpdateSCBRCOLR
+UpdateCLSR
+UpdatePORSCMR

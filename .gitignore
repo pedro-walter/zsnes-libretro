@@ -2,3 +2,8 @@ build/
 tools/retroarch32/
 __pycache__/
 /dist/
+/scratch/
+/*.srm
+/shot_*.png
+/zsnesl.cfg
+/rominfo.txt
