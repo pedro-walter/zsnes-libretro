@@ -71,7 +71,13 @@ Verification tools (`tools/lift/lift_rt.c`):
 * `ZL_DUALT=N [ZL_DUAL_ONLY=name]` does the same for the tail-style overrides (opcode handlers that end in "jump to the next
   handler"): the cycle counter is forced to 0 so that exactly one opcode runs, then the real emulation continues with the C code.
 * `LIFT_NOOVR=name,...|all` disables overrides (bisecting); `LIFT_PROF=2` prints the hottest guest entry points.
-* `tools/rom_check.sh`, `tools/rom_batch.sh <dir> <frames> <seeds>`: ref-vs-candidate with scripted input (`CAND=<so>` selects the candidate).
+* `tools/rom_check.sh`, `tools/rom_batch.sh <dir> <frames> <seeds>`, `tools/rom_batch_par.sh <dir> <frames> <jobs> <seeds>`: ref-vs-candidate
+  with scripted input (`CAND=<so>` selects the candidate); 20000-60000 frame soak runs are cheap and found a rare timing divergence.
+* `tools/fuzzrom_par.sh <so> rom|dsp1|sfx|sa1|sdd1 <from> <to>`: generated register-fuzz ROMs (random PPU/DMA/chip traffic); a mismatch that
+  also exists with `LIFT_NOOVR=all` is a lifter-vs-native effect, one that disappears with an override disabled is a bug in that override
+  (this is how the StartDrawNewGfx16b pass order and the SA-1 BRK were found).
+* Debug aids: harness `-Z <frame> <file>` dumps WRAM, `ZL_SCHED_TRACE=file` / `ZL_SCHED_TRACE_TXT` (lifted) and `ZS_SCHED_TRACE[_TXT]` (the hybrid
+  `make all` core) log the scheduler state per scanline, `ZL_VD_TRACE=N` traces the drawer calls of the Nth frame.
 
 Still lifted asm (no hand-written C yet): the SuperFX interpreter (`fxemu2*.asm`, `fxtable.asm`: 16 handler tables, runtime
 patched plot routines), SPC7110 (needs data files / ROM hacks), C4 and OBC1 (OBC1 is never enabled by ZSNES for the Metal Combat dump
