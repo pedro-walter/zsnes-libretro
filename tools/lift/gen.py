@@ -12,6 +12,14 @@ SKIP_TEXT = ['video/hq', 'dos/sw', 'dos/debug', 'dos/modemrtn', 'dos/gppro', 'do
 KEEP_TEXT = ['dos/initvid']
 FORCE_ARENA = ['zcfgdir', '_cchar', 'CMDLineStr']   # C buffers whose address is handed to the guest   # text needed even though dos/*
 
+def regflags(toks):
+    f = (1 if 'tail' in toks else 0) | (2 if 'noregs' in toks else 0)
+    for t in toks:
+        if t.startswith('cmp='):
+            f |= 0x8000
+            for r in t[4:].split(','): f |= 1 << (8 + ['eax', 'ecx', 'edx', 'ebx', 'esi', 'edi', 'ebp'].index(r))
+    return f
+
 def load_all():
     notsub = lambda p: '/ref/' not in p and '/lift' not in p
     ao = sorted(glob.glob(REFDIR + '/**/*.ao', recursive=True))
@@ -132,6 +140,17 @@ def main():
 
     for n in FORCE_ARENA:
         if n not in P.gdata: objs.alloc_var(P, n)
+    # C overrides of asm functions: tools/lift/overrides.txt  ("asm_label c_function"); the label's lifted body is
+    # kept (reachable with lift_orig=1) so the original stays available for differential testing
+    OVR = {}; ovr_list = []
+    ovp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'overrides.txt')
+    if os.path.exists(ovp):
+        for ln in open(ovp):
+            ln = ln.split('#')[0].split()
+            if not ln: continue
+            key = P.gtext.get(ln[0]) or P.local_text(ln[0])
+            if key is None: raise Exception('override: unknown asm label ' + ln[0])
+            OVR[key] = (len(ovr_list), ln[1]); ovr_list.append((ln[0], ln[1], regflags(ln[2:]), key))
     # emit objects
     objnames = []
     unsup = collections.Counter()
@@ -175,6 +194,7 @@ def main():
             f.write('do_ret: pc=M32(esp); esp+=4; goto dispatch;\n')
             for ins in oc.ins:
                 if ins.addr in labels: f.write('L%x:\n' % ins.addr)
+                if (oi, ins.addr) in OVR: f.write('    if (!lift_orig) { FLUSH(); return OVR_ID(%d); }\n' % OVR[(oi, ins.addr)][0])
                 f.write('    ' + lines[ins.addr] + '\n')
             f.write('    FLUSH(); LIFT_BAD(%s);\n}\n' % hx_(objs.code_id(oi, len(o.text))))
     print('emitted; unsupported:', total_unsup, file=sys.stderr)
@@ -209,7 +229,7 @@ def main():
     # ---- headers / tables ----
     with open(os.path.join(outdir, 'lift_syms.h'), 'w') as f:
         f.write('/* generated */\n#define LIFT_DATA_END 0x%x\n#define LIFT_ARENA_BASE 0x%xu\n#define LIFT_ARENA_SIZE 0x%xu\n' % (P.data_end, objs.ARENA_BASE, objs.ARENA_SIZE))
-        for name, a in sorted(P.gdata.items()): f.write('#define ZO_%s 0x%xu\n' % (name, a))
+        for name, a in sorted(list(P.gdata.items()) + list(P.ldata.items())): f.write('#define ZO_%s 0x%xu\n' % (name, a))
         for name, a in sorted(P.foreign_vars.items()): f.write('#define ZO_%s 0x%xu\n' % (name, a))
         for name, (oi, off) in sorted(P.gtext.items()):
             f.write('#define ZID_%s 0x%xu\n' % (name, objs.code_id(oi, off)))
@@ -232,9 +252,31 @@ def main():
         f.write('const char *const lift_missing_names[] = {\n')
         for n, i in sorted(P.missing.items(), key=lambda x: x[1]): f.write('    "%s",\n' % n)
         f.write('    0 };\n')
+    with open(os.path.join(outdir, 'lift_ovr.c'), 'w') as f:
+        f.write('/* generated */\n#include "lift.h"\n')
+        for a, c, tail, key in ovr_list:
+            if tail & 1: f.write('u32 %s(void);\n' % c)
+            else: f.write('void %s(void);\nstatic u32 ovw_%s(void) { %s(); return 0; }\n' % (c, c, c))
+        f.write('u32 (*const lift_ovr_fns[])(void) = {\n')
+        for a, c, tail, key in ovr_list: f.write('    %s,\n' % (c if tail & 1 else 'ovw_' + c))
+        f.write('    0 };\nconst char *const lift_ovr_names[] = {\n')
+        for a, c, tail, key in ovr_list: f.write('    "%s",\n' % a)
+        f.write('    0 };\nconst int lift_ovr_count = %d;\n' % len(ovr_list))
+        f.write('const unsigned short lift_ovr_flags[] = {\n')
+        for a, c, tail, key in ovr_list: f.write('    %d,\n' % tail)
+        f.write('    0 };\n')
+        f.write('const unsigned lift_ovr_ids[] = {\n')
+        for a, c, tail, key in ovr_list: f.write('    0x%xu,\n' % objs.code_id(*key))
+        f.write('    0 };\n')
+        syms = sorted(list(P.gdata.items()) + list(P.ldata.items()) + list(P.foreign_vars.items()), key=lambda x: x[1])
+        f.write('const unsigned lift_sym_addr[] = {\n')
+        for n, a in syms: f.write('    0x%xu,\n' % a)
+        f.write('    0 };\nconst char *const lift_sym_name[] = {\n')
+        for n, a in syms: f.write('    "%s",\n' % n)
+        f.write('    0 };\nconst int lift_sym_count = %d;\n' % len(syms))
     NOEXPORT = {'zs_mcall', 'zs_call_asm'}
     with open(os.path.join(outdir, 'lift_syms.ld'), 'w') as f:
-        for name, a in sorted(P.gdata.items()): f.write('%s = 0x%x;\n' % (name, a))
+        for name, a in sorted(list(P.gdata.items()) + list(P.ldata.items())): f.write('%s = 0x%x;\n' % (name, a))
         for name, a in sorted(P.foreign_vars.items()): f.write('%s = 0x%x;\n' % (name, a))
         for name, (oi, off) in sorted(P.gtext.items()):
             if name not in NOEXPORT: f.write('%s = 0x%x;\n' % (name, objs.code_id(oi, off)))

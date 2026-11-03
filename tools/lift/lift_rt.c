@@ -103,11 +103,125 @@ static u32 ext_invoke(u32 id, const u32 *a)
 }
 u32 ext_call(u32 id) { return ext_invoke(id, (const u32 *)(uintptr_t)LG.esp); }
 
+
+/* ---------------- differential testing of C overrides ----------------
+ * ZL_DUAL=N  : every Nth call of an overridden function runs the C version, snapshots the machine, restores the
+ *              pre-call state, runs the original lifted body and compares the whole arena (+registers).  The original's
+ *              result is kept.  ZL_DUAL_ONLY=substr restricts it to matching functions, ZL_DUAL_MAX=n caps the reports. */
+static struct { u32 lo, hi; } dual_ign[256]; static int ndual_ign;
+void zl_dual_ignore(u32 addr, u32 len) { if (ndual_ign < 256) { dual_ign[ndual_ign].lo = addr; dual_ign[ndual_ign].hi = addr + len; ndual_ign++; } }
+void zl_dual_ignore_sym(const char *name)
+{
+    int i;
+    for (i = 0; i < lift_sym_count; i++) if (!strcmp(lift_sym_name[i], name)) {
+        u32 lo = lift_sym_addr[i], hi = i + 1 < lift_sym_count ? lift_sym_addr[i + 1] : LIFT_DATA_END;
+        zl_dual_ignore(lo, hi - lo); return;
+    }
+    fprintf(stderr, "zl_dual_ignore_sym: no symbol %s\n", name);
+}
+static const char *symname(u32 a, u32 *off)
+{
+    int lo = 0, hi = lift_sym_count - 1, r = -1;
+    while (lo <= hi) { int m = (lo + hi) / 2; if (lift_sym_addr[m] <= a) { r = m; lo = m + 1; } else hi = m - 1; }
+    if (r < 0) { *off = a; return "?"; }
+    *off = a - lift_sym_addr[r]; return lift_sym_name[r];
+}
+static unsigned long dual_calls[4096], dual_diffs[4096];
+static int dual_rate = -1, dual_max = 40, dual_reports;
+static const char *dual_only;
+static u8 *dsnapA, *dsnap0; static size_t dsnapcap;
+#define DSTK (64u << 10)
+static void dual_summary(void)
+{
+    int k;
+    if (dual_rate <= 0) return;
+    for (k = 0; k < lift_ovr_count; k++) if (dual_calls[k]) fprintf(stderr, "DUAL %-28s checked %lu  mismatching %lu\n", lift_ovr_names[k], dual_calls[k], dual_diffs[k]);
+}
+static u32 prot_lo, prot_hi;     /* the emulator's own C stack lives in the arena: never restore or compare it */
+void zl_dual_protect(void *p, unsigned long n) { prot_lo = (u32)(uintptr_t)p; prot_hi = prot_lo + (u32)n; }
+static void dual_restore(u8 *arena, const u8 *src, u32 used)
+{
+    u32 lo = prot_lo > LIFT_ARENA_BASE ? prot_lo - LIFT_ARENA_BASE : 0, hi = prot_hi > LIFT_ARENA_BASE ? prot_hi - LIFT_ARENA_BASE : 0;
+    if (hi > used) hi = used;
+    if (lo >= hi) { memcpy(arena, src, used); return; }
+    memcpy(arena, src, lo); memcpy(arena + hi, src + hi, used - hi);
+}
+static int ignored(u32 a) { if (a >= prot_lo && a < prot_hi) return 1; int i; for (i = 0; i < ndual_ign; i++) if (a >= dual_ign[i].lo && a < dual_ign[i].hi) return 1; return 0; }
+static void dual_run(u32 k)
+{
+    u32 used = (heap_ptr - LIFT_ARENA_BASE + 15u) & ~15u, i, ndiff = 0;
+    size_t need = (size_t)used + DSTK;
+    u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE, *stk = arena + LIFT_ARENA_SIZE - DSTK;
+    lift_state_t lg0 = LG, lgA; double fp0[8]; int fptop0 = lift_fptop;
+    u32 real = M32(LG.esp), slot = LG.esp;
+    if (need > dsnapcap) { free(dsnapA); free(dsnap0); dsnapcap = need + (4u << 20); dsnapA = malloc(dsnapcap); dsnap0 = malloc(dsnapcap); if (!dsnapA || !dsnap0) die("dual: out of memory (%zu)", dsnapcap); }
+    memcpy(fp0, lift_fp, sizeof fp0);
+    if (getenv("ZL_DUAL_DBG")) fprintf(stderr, "dual %s used=%u cap=%zu d0=%p dA=%p\n", lift_ovr_names[k], used, dsnapcap, (void*)dsnap0, (void*)dsnapA);
+    memcpy(dsnap0, arena, used); memcpy(dsnap0 + used, stk, DSTK);
+    lift_ovr_fns[k](); LG.esp += 4;          /* the override acts as the function's ret */
+    lgA = LG;
+    memcpy(dsnapA, arena, used); memcpy(dsnapA + used, stk, DSTK);
+    dual_restore(arena, dsnap0, used); memcpy(stk, dsnap0 + used, DSTK);
+    LG = lg0; memcpy(lift_fp, fp0, sizeof fp0); lift_fptop = fptop0;
+    M32(slot) = SENT_ID;
+    lift_orig++; lift_run(lift_ovr_ids[k]); lift_orig--;
+    M32(slot) = real;
+    dual_calls[k]++;
+    {   /* compare */
+        const char *why[16]; int nw = 0;
+        #define CR(r) if (lgA.r != LG.r && nw < 16) { static char b[16][64]; snprintf(b[nw], 64, #r " C=%08x orig=%08x", lgA.r, LG.r); why[nw] = b[nw], nw++; }
+        { unsigned f = lift_ovr_flags[k], m = (f & 0x8000) ? (f >> 8) & 0x7F : (f & 2) ? 0 : 0x7F;
+          if (m & 1) { CR(eax) } if (m & 2) { CR(ecx) } if (m & 4) { CR(edx) } if (m & 8) { CR(ebx) }
+          if (m & 16) { CR(esi) } if (m & 32) { CR(edi) } if (m & 64) { CR(ebp) } }
+        CR(esp)
+        for (i = 0; i < used; i++) {
+            if (dsnapA[i] != arena[i] && !ignored(LIFT_ARENA_BASE + i)) {
+                if (ndiff < 8 && dual_reports < dual_max) {
+                    u32 off; const char *n = symname(LIFT_ARENA_BASE + i, &off);
+                    fprintf(stderr, "DUAL %s: %08x (%s+0x%x) C=%02x orig=%02x\n", lift_ovr_names[k], LIFT_ARENA_BASE + i, n, off, dsnapA[i], arena[i]);
+                }
+                ndiff++;
+            }
+        }
+        for (i = 0; i < DSTK; i++) if (dsnapA[used + i] != stk[i] && LIFT_ARENA_BASE + LIFT_ARENA_SIZE - DSTK + i >= lg0.esp && ndiff++ < 3 && dual_reports < dual_max)
+            fprintf(stderr, "DUAL %s: stack +%x C=%02x orig=%02x\n", lift_ovr_names[k], i, dsnapA[used + i], stk[i]);
+        if (ndiff || nw) {
+            int w;
+            dual_diffs[k]++; dual_reports++;
+            if (dual_reports <= dual_max) { fprintf(stderr, "DUAL %s: MISMATCH (%u bytes)", lift_ovr_names[k], ndiff); for (w = 0; w < nw; w++) fprintf(stderr, " [%s]", why[w]); fputc('\n', stderr); }
+        }
+    }
+    LG.esp -= 4;     /* give lift_run its return address back */
+}
+static int dual_wanted(u32 k)
+{
+    if (dual_rate < 0) {
+        const char *e = getenv("ZL_DUAL"); dual_rate = e ? atoi(e) : 0;
+        dual_only = getenv("ZL_DUAL_ONLY"); if (getenv("ZL_DUAL_MAX")) dual_max = atoi(getenv("ZL_DUAL_MAX"));
+        if (dual_rate > 0) atexit(dual_summary);
+    }
+    if (dual_rate <= 0 || lift_orig || (lift_ovr_flags[k] & 1)) return 0;
+    if (dual_only && !strstr(lift_ovr_names[k], dual_only)) return 0;
+    { static unsigned long n[4096]; return (n[k]++ % (unsigned)dual_rate) == 0; }
+}
+
+static unsigned long long prof[128];
+__attribute__((destructor)) static void prof_dump(void)
+{ if (!getenv("LIFT_PROF")) return; for (int i = 0; i < 128; i++) if (prof[i]) fprintf(stderr, "PROF %s %llu\n", oname((u32)i << 21), prof[i]); }
+int lift_orig;
+void zl_orig(u32 id) { LG.esp -= 4; M32(LG.esp) = SENT_ID; lift_orig++; lift_run(id); lift_orig--; }
 u32 lift_run(u32 pc)
 {
     for (;;) {
         u32 o = pc >> 21;
         if (o == (SENT_ID >> 21)) return pc;
+        if (o == 0x7C) {      /* C override of an asm function (register ABI through LG); acts as the function's ret */
+            { u32 k = pc & 0x1FFFFF, nx;
+              if (dual_wanted(k)) { dual_run(k); nx = 0; } else nx = lift_ovr_fns[k]();
+              if (nx) { pc = nx; continue; } }
+            pc = M32(LG.esp); LG.esp += 4;
+            continue;
+        }
         if (o == 0x7F) {      /* indirect call/jump to a foreign function: args after the return address */
             LG.eax = ext_invoke(pc, (const u32 *)(uintptr_t)(LG.esp + 4));
             pc = M32(LG.esp); LG.esp += 4;
@@ -116,6 +230,7 @@ u32 lift_run(u32 pc)
         ring[ringi++ & 63] = pc;
         if (o >= 128 || !lift_objtab[o]) die("dispatch into non-lifted code 0x%x (%s+0x%x)", pc, oname(pc), pc & 0x1FFFFF);
         ring[ringi++ & 63] = pc;
+        prof[o]++;
         pc = lift_objtab[o](pc);
     }
 }

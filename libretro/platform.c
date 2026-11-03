@@ -138,6 +138,9 @@ int zs_start(const char *rom_path)
 
     emu_stack = malloc(EMU_STACK_SIZE);
     if (!emu_stack) return 0;
+#ifdef LIFTED
+    zl_dual_protect(emu_stack, EMU_STACK_SIZE);
+#endif
     getcontext(&emu_ctx);
     emu_ctx.uc_stack.ss_sp = emu_stack;
     emu_ctx.uc_stack.ss_size = EMU_STACK_SIZE;

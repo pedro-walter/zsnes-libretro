@@ -3,7 +3,7 @@ BITS ?= 64
 L     := build/lift
 O     ?= build/lift$(BITS)
 CC    := gcc -m$(BITS)
-CFL   := -O1 -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore -D__LINUX__ -DNO_PNG -DLIFTED
+CFL   := $(CFEXTRA) -O1 -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore -D__LINUX__ -DNO_PNG -DLIFTED
 LIFTC := $(wildcard $(L)/lift_*.c)
 LOBJ  := $(patsubst $(L)/%.c,$(O)/%.o,$(LIFTC))
 
@@ -19,6 +19,14 @@ $(O)/lift_data.o: $(L)/lift_data.bin
 	printf '.section .rodata\n.globl lift_data_bin\nlift_data_bin:\n.incbin "$(L)/lift_data.bin"\n.globl lift_data_bin_len\nlift_data_bin_len:\n.long %d\n.section .note.GNU-stack,"",@progbits\n' $$(stat -c %s $(L)/lift_data.bin) > $(O)/lift_data.s
 	$(CC) -c -o $@ $(O)/lift_data.s
 
+FPX := $(if $(filter 64,$(BITS)),-mfpmath=387,)
+# hand-written C overriding lifted asm functions (tools/lift/overrides.txt); plain C, guest data via absolute symbols
+HSRCS := $(wildcard core/zl/*.c)
+HOBJ  := $(patsubst core/zl/%.c,$(O)/h/%.o,$(HSRCS))
+$(O)/h/%.o: core/zl/%.c core/zl/zl.h tools/lift/lift.h $(L)/lift_syms.h
+	@mkdir -p $(O)/h
+	$(CC) $(CFL) -Icore/zl -c -o $@ $<
+
 # C sources shared with the guest: variables are moved into the arena by tools/lift/cfix.py
 CSRCS := core/initc.c core/uic.c core/cfgload.c core/patch.c core/version.c core/linux/zfilew.c core/linux/ztcp.c \
          core/chips/dsp1emu.c core/chips/seta10.c core/chips/sdd1emu.c core/cpu/executec.c \
@@ -30,14 +38,13 @@ $(O)/c/cfixed.stamp: $(CSRCS) $(L)/lift_cvars.txt tools/lift/cfix.py
 	python3 tools/lift/cfix.py $(L)/lift_cvars.txt $(O)/c $(CSRCS)
 	touch $@
 # DSP-1 uses doubles; the original ran on x87 (extended intermediates), so match that on x86-64
-FPX := $(if $(filter 64,$(BITS)),-mfpmath=387,)
 $(O)/c/dsp1emu.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
 	$(CC) $(CFL) $(FPX) -include tools/lift/lift_cdefs.h -I$(dir $(firstword $(CSRCS))) -Icore/linux -Icore/chips -Icore/cpu -Icore/effects -c -o $@ $(O)/c/dsp1emu.c
 $(O)/c/%.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
 	$(CC) $(CFL) -include tools/lift/lift_cdefs.h -I$(dir $(firstword $(CSRCS))) -Icore/linux -Icore/chips -Icore/cpu -Icore/effects -c -o $@ $(O)/c/$*.c
 
-$(O)/zsnes_lifted.so: $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(L)/lift_syms.ld
-	$(CC) -shared -o $@ $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(L)/lift_syms.ld -lm
+$(O)/zsnes_lifted.so: $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(HOBJ) $(L)/lift_syms.ld
+	$(CC) -shared -o $@ $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(HOBJ) $(L)/lift_syms.ld -lm
 
 # Regenerate the lifted C from the pristine upstream asm objects (build/ref/**/*.ao, built by the main Makefile) and
 # rebuild.  Needs python3 with capstone + pyelftools.

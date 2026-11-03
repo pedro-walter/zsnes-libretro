@@ -65,6 +65,14 @@ def build_prog(obj_paths, root, skip_text, cobjs, extra_foreign_funcs):
         o.data_addr = align(addr, max(o.data_align, 4)); addr = o.data_addr + len(o.data)
         o.bss_addr = align(addr, max(o.bss_align, 4)); addr = o.bss_addr + o.bss_size
     P.data_end = addr
+    def local_text(spec):    # "dir/obj.ao:label" for non-global code labels
+        on, _, lab = spec.partition(':')
+        for o in P.objs:
+            if o.name == on:
+                for sy in o.syms:
+                    if sy['sec'] == '.text' and sy['name'] == lab: return (o.idx, sy['value'])
+        return None
+    P.local_text = local_text
     P.gtext = {}; P.gdata = {}
     for o in P.objs:
         for s in o.syms:
@@ -76,6 +84,21 @@ def build_prog(obj_paths, root, skip_text, cobjs, extra_foreign_funcs):
                 P.gdata[s['name']] = o.data_addr + s['value']
             elif s['sec'] == '.bss':
                 P.gdata[s['name']] = o.bss_addr + s['value']
+    # unique local data labels (asm labels without NEWSYM) are exported too, for C that overrides asm
+    P.ldata = {}; seen = {}
+    for o in P.objs:
+        for s in o.syms:
+            if s['bind'] != 'STB_LOCAL' or s['sec'] not in ('.data', '.bss') or s['type'] == 'STT_SECTION': continue
+            n = s['name']
+            if not n or n.startswith('.') or '..@' in n or '%' in n: continue
+            a = (o.data_addr if s['sec'] == '.data' else o.bss_addr) + s['value']
+            seen.setdefault(n, set()).add(a)
+    exp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports.txt')
+    want = set(l.split('#')[0].strip() for l in open(exp)) - {''} if os.path.exists(exp) else set()
+    for n, aa in seen.items():
+        if n in want and len(aa) == 1 and n not in P.gdata and n not in P.gtext: P.ldata[n] = next(iter(aa))
+    for n in want:
+        if n not in P.ldata and n not in P.gdata and n not in P.gtext: print('exports.txt: cannot export', n, file=sys.stderr)
     # C objects: foreign definitions
     P.cfunc = set(extra_foreign_funcs); P.cvar = {}; P.cvar_init = {}
     for p in cobjs:

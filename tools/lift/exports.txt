@@ -1,0 +1,22 @@
+# local asm data labels exported as ZO_<name> / linker symbols for hand-written C (core/zl)
+AdsrBendData
+bshift
+DSPInterP
+echowrittento
+EnvITemp
+filter0
+filter1
+GainDecBendData
+IncNTemp
+lastbl
+loopbl
+powhack
+prev0
+prev1
+PSampleBuf
+sampleleft
+spc700temp
+spcres
+StatTemp
+TimeTemp
+VolumeTableD
