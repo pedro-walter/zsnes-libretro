@@ -155,9 +155,10 @@ def main():
         for ln in open(ovp):
             ln = ln.split('#')[0].split()
             if not ln: continue
-            key = P.gtext.get(ln[0]) or P.local_text(ln[0])
-            if key is None: raise Exception('override: unknown asm label ' + ln[0])
-            OVR[key] = (len(ovr_list), ln[1]); ovr_list.append((ln[0], ln[1], regflags(ln[2:]), key))
+            key = None if ln[0] == '-' else (P.gtext.get(ln[0]) or P.local_text(ln[0]))
+            if key is None and ln[0] != '-': raise Exception('override: unknown asm label ' + ln[0])
+            if key is not None: OVR[key] = (len(ovr_list), ln[1])
+            ovr_list.append((ln[0], ln[1], regflags(ln[2:]), key))
     # emit objects
     objnames = []
     unsup = collections.Counter()
@@ -248,7 +249,9 @@ def main():
                 key = P.gtext.get(ln[0]) or P.local_text(ln[0])
                 if key is None: raise Exception('idexports: unknown label ' + ln[0])
                 f.write('#define ZID_%s 0x%xu\n' % (ln[0].split(':')[-1].replace('.', '_'), objs.code_id(*key)))
-        for lab, c, tail, key in ovr_list:
+        for k_, (lab, c, tail, key) in enumerate(ovr_list):
+            f.write('#define ZOVR_%s ((0x7Cu << 21) | %du)\n' % (c, k_))
+            if key is None: continue
             nm = lab.split(':')[-1]
             if nm not in P.gtext: f.write('#define ZID_%s 0x%xu\n' % (nm, objs.code_id(*key)))
     with open(os.path.join(outdir, 'lift_tab.c'), 'w') as f:
@@ -284,7 +287,7 @@ def main():
         for a, c, tail, key in ovr_list: f.write('    %d,\n' % tail)
         f.write('    0 };\n')
         f.write('const unsigned lift_ovr_ids[] = {\n')
-        for a, c, tail, key in ovr_list: f.write('    0x%xu,\n' % objs.code_id(*key))
+        for a, c, tail, key in ovr_list: f.write('    0x%xu,\n' % (objs.code_id(*key) if key else 0))
         f.write('    0 };\n')
         syms = sorted(list(P.gdata.items()) + list(P.ldata.items()) + list(P.foreign_vars.items()), key=lambda x: x[1])
         f.write('const unsigned lift_sym_addr[] = {\n')
