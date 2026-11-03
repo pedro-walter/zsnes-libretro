@@ -105,6 +105,13 @@ def main():
             elif mn in ('hlt', 'iretd', 'int', 'ud2'): ins.succ_kind = 'end'
             else: ins.succ_kind = 'seq'
     allins = [i for oc in OC.values() for i in reversed(oc.ins)]
+    idp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idexports.txt')
+    if os.path.exists(idp):
+        for ln in open(idp):
+            ln = ln.split('#')[0].split()
+            if ln:
+                key = P.gtext.get(ln[0]) or P.local_text(ln[0])
+                if key is not None: taken.add(objs.code_id(*key))
     takennodes = [node_of(v) for v in taken]
     takennodes = [x for x in takennodes if x is not None]
     GRET = 0; GIND = 0
@@ -194,7 +201,7 @@ def main():
             f.write('do_ret: pc=M32(esp); esp+=4; goto dispatch;\n')
             for ins in oc.ins:
                 if ins.addr in labels: f.write('L%x:\n' % ins.addr)
-                if (oi, ins.addr) in OVR: f.write('    if (!lift_orig) { FLUSH(); return OVR_ID(%d); }\n' % OVR[(oi, ins.addr)][0])
+                if (oi, ins.addr) in OVR: f.write('    OVR_GUARD(%d)\n' % OVR[(oi, ins.addr)][0])
                 f.write('    ' + lines[ins.addr] + '\n')
             f.write('    FLUSH(); LIFT_BAD(%s);\n}\n' % hx_(objs.code_id(oi, len(o.text))))
     print('emitted; unsupported:', total_unsup, file=sys.stderr)
@@ -233,6 +240,17 @@ def main():
         for name, a in sorted(P.foreign_vars.items()): f.write('#define ZO_%s 0x%xu\n' % (name, a))
         for name, (oi, off) in sorted(P.gtext.items()):
             f.write('#define ZID_%s 0x%xu\n' % (name, objs.code_id(oi, off)))
+        idp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idexports.txt')
+        if os.path.exists(idp):
+            for ln in open(idp):
+                ln = ln.split('#')[0].split()
+                if not ln: continue
+                key = P.gtext.get(ln[0]) or P.local_text(ln[0])
+                if key is None: raise Exception('idexports: unknown label ' + ln[0])
+                f.write('#define ZID_%s 0x%xu\n' % (ln[0].split(':')[-1].replace('.', '_'), objs.code_id(*key)))
+        for lab, c, tail, key in ovr_list:
+            nm = lab.split(':')[-1]
+            if nm not in P.gtext: f.write('#define ZID_%s 0x%xu\n' % (nm, objs.code_id(*key)))
     with open(os.path.join(outdir, 'lift_tab.c'), 'w') as f:
         f.write('/* generated */\n#include "lift.h"\n')
         for oi, fn, nm in objnames: f.write('u32 %s(u32);\n' % fn)

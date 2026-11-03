@@ -18,6 +18,8 @@ typedef struct {
 } lift_state_t;
 extern lift_state_t LG;
 extern int lift_orig;                       /* 1: overridden asm functions run their original lifted body */
+extern int lift_once;                       /* run the original body for the next override entry only */
+#define OVR_GUARD(k) if (!lift_orig) { if (lift_once) lift_once = 0; else { FLUSH(); return OVR_ID(k); } }
 #define OVR_ID(k) ((0x7Cu << 21) | (u32)(k))
 extern u32 (*const lift_ovr_fns[])(void);       /* return 0 = act as the function's ret, else code id to jump to */
 extern const char *const lift_ovr_names[];

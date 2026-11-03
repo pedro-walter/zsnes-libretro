@@ -11,7 +11,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <ucontext.h>
+#endif
 #include <zlib.h>
 #include "platform.h"
 
@@ -75,7 +79,16 @@ unsigned zs_width = 256, zs_height = 224;
 int zs_frame_ready;
 uint16_t zs_pad[2];  /* RETRO_DEVICE_ID_JOYPAD_* bitmask per port */
 
+/* coroutine primitives: ucontext on POSIX, fibers on Windows */
+#ifdef _WIN32
+static LPVOID main_fib, emu_fib;
+#define CO_TO_MAIN()  SwitchToFiber(main_fib)
+#define CO_TO_EMU()   SwitchToFiber(emu_fib)
+#else
 static ucontext_t main_ctx, emu_ctx;
+#define CO_TO_MAIN()  swapcontext(&emu_ctx, &main_ctx)
+#define CO_TO_EMU()   swapcontext(&main_ctx, &emu_ctx)
+#endif
 static char *emu_stack;
 static int emu_started, emu_dead, emu_running;
 
@@ -114,11 +127,15 @@ static void poll_input(void)
 
 /* ---------------- coroutine plumbing ---------------- */
 
+#ifdef _WIN32
+static void emu_entry(void);
+static VOID CALLBACK emu_fiber_proc(LPVOID p) { (void)p; emu_entry(); }
+#endif
 static void emu_entry(void)
 {
     zs_call_asm(zstart);
     emu_dead = 1;
-    for (;;) swapcontext(&emu_ctx, &main_ctx);
+    for (;;) CO_TO_MAIN();
 }
 
 int zs_start(const char *rom_path)
@@ -136,6 +153,12 @@ int zs_start(const char *rom_path)
     f[n + 1] = 0;
     zs_call_asm(makeextension);
 
+#ifdef _WIN32
+    if (!main_fib) { main_fib = IsThreadAFiber() ? GetCurrentFiber() : ConvertThreadToFiber(NULL); if (!main_fib) return 0; }
+    if (emu_fib) DeleteFiber(emu_fib);
+    emu_fib = CreateFiber(EMU_STACK_SIZE, emu_fiber_proc, NULL);
+    if (!emu_fib) return 0;
+#else
     emu_stack = malloc(EMU_STACK_SIZE);
     if (!emu_stack) return 0;
 #ifdef LIFTED
@@ -146,6 +169,7 @@ int zs_start(const char *rom_path)
     emu_ctx.uc_stack.ss_size = EMU_STACK_SIZE;
     emu_ctx.uc_link = &main_ctx;
     makecontext(&emu_ctx, emu_entry, 0);
+#endif
     emu_started = 1;
     emu_dead = 0;
     return 1;
@@ -157,7 +181,7 @@ int zs_run_frame(void)
     if (!emu_started || emu_dead) return 0;
     poll_input();
     emu_running = 1;
-    swapcontext(&main_ctx, &emu_ctx);
+    CO_TO_EMU();
     emu_running = 0;
 #ifdef LIFTED
     lift_baseline();   /* no-op after the first frame */
@@ -167,6 +191,9 @@ int zs_run_frame(void)
 
 void zs_stop(void)
 {
+#ifdef _WIN32
+    if (emu_fib) { DeleteFiber(emu_fib); emu_fib = NULL; }
+#endif
     free(emu_stack);
     emu_stack = NULL;
     emu_started = 0;
@@ -177,13 +204,13 @@ void zs_fatal(void)
 {
     if (!emu_running) return;          /* not inside the coroutine: caller aborts */
     emu_dead = 1;
-    for (;;) swapcontext(&emu_ctx, &main_ctx);
+    for (;;) CO_TO_MAIN();
 }
 
 /* Called by the asm (Check60hz) when it wants to sleep until the next tick. */
 void sem_sleep(void)
 {
-    swapcontext(&emu_ctx, &main_ctx);
+    CO_TO_MAIN();
     zs_call_asm((void (*)(void))Game60hzcall);   /* one emulated frame's worth of timer ticks */
 }
 
@@ -192,7 +219,7 @@ void CheckTimers(void) { /* pacing is handled by the frontend */ }
 void LinuxExit(void)
 {
     emu_dead = 1;
-    for (;;) swapcontext(&emu_ctx, &main_ctx);
+    for (;;) CO_TO_MAIN();
 }
 
 /* ---------------- timers (no-ops) ---------------- */

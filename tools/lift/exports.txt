@@ -20,3 +20,5 @@ spcres
 StatTemp
 TimeTemp
 VolumeTableD
+bgscroltemp
+SpeedHackSafeTable

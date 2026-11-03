@@ -1,0 +1,3 @@
+# code labels exported as ZID_<name> (. -> _) for hand-written C
+cpu/execute.ao:Donextlinecache
+cpu/execute.ao:execloop.startagain

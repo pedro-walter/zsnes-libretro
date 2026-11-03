@@ -3,7 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/mman.h>
+#endif
 #include "lift.h"
 #include "lift_syms.h"
 
@@ -21,7 +25,7 @@ extern const int lift_ext_count;
 static u32 heap_ptr, heap_end;
 static int inited;
 
-#ifndef MAP_FIXED_NOREPLACE
+#if !defined(_WIN32) && !defined(MAP_FIXED_NOREPLACE)
 #define MAP_FIXED_NOREPLACE 0x100000
 #endif
 
@@ -29,8 +33,12 @@ int lift_init(void)
 {
     void *p;
     if (inited) return 1;
+#ifdef _WIN32
+    p = VirtualAlloc((void *)(uintptr_t)LIFT_ARENA_BASE, LIFT_ARENA_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+#else
     p = mmap((void *)(uintptr_t)LIFT_ARENA_BASE, LIFT_ARENA_SIZE, PROT_READ | PROT_WRITE,
              MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE | MAP_NORESERVE, -1, 0);
+#endif
     if (p != (void *)(uintptr_t)LIFT_ARENA_BASE) {
         fprintf(stderr, "lift: cannot map guest arena at 0x%x\n", LIFT_ARENA_BASE);
         return 0;
@@ -46,7 +54,11 @@ int lift_init(void)
 
 void lift_shutdown(void)
 {
+#ifdef _WIN32
+    if (inited) VirtualFree((void *)(uintptr_t)LIFT_ARENA_BASE, 0, MEM_RELEASE);
+#else
     if (inited) munmap((void *)(uintptr_t)LIFT_ARENA_BASE, LIFT_ARENA_SIZE);
+#endif
     inited = 0;
 }
 
@@ -208,7 +220,7 @@ static int dual_wanted(u32 k)
 static unsigned long long prof[128];
 __attribute__((destructor)) static void prof_dump(void)
 { if (!getenv("LIFT_PROF")) return; for (int i = 0; i < 128; i++) if (prof[i]) fprintf(stderr, "PROF %s %llu\n", oname((u32)i << 21), prof[i]); }
-int lift_orig;
+int lift_orig, lift_once;
 /* call a guest function with the registers in LG (results stay in LG) */
 void zl_mcall(u32 id) { LG.esp -= 4; M32(LG.esp) = SENT_ID; lift_run(id); }
 void zl_orig(u32 id) { LG.esp -= 4; M32(LG.esp) = SENT_ID; lift_orig++; lift_run(id); lift_orig--; }
