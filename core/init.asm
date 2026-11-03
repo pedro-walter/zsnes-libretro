@@ -217,6 +217,10 @@ NEWSYM init
     call inittable
     call inittableb
     call inittablec
+%ifdef __LIBRETRO__
+    EXTSYM zs_cpu_install
+    call zs_cpu_install
+%endif
     call SA1inittable
     ; SPC Init
     call copyexecloop

@@ -11,13 +11,13 @@ NFLAGS := -w-orphan-labels -D__LINUX__ -DELF -DNO_PNG -D__LIBRETRO__ -f elf32 -O
 B      := build
 
 ASM := $(addprefix chips/,sfxproc fxemu2 dsp1proc fxemu2b fxemu2c fxtable sa1proc sa1regs st10proc dsp2proc) \
-       $(addprefix cpu/,addrni dma dsp dspproc execute irq memory spc700 stable table tableb tablec) \
+       $(addprefix cpu/,addrni cpustub dma dsp dspproc execute irq memory spc700 stable table tableb tablec) \
        $(addprefix gui/,gui menu) \
        $(addprefix video/,makev16b makev16t makevid mode716 mode716b mode716d mode716e mode716t mode7 mode7ext mv16tms newg162 newgfx16 newgfx2 newgfx m716text 2xsaiw procvid sw_draw hq2x16 hq2x32 hq3x16 hq3x32 hq4x16 hq4x32) \
        $(addprefix linux/,copyvwin sdlintrf) \
        $(addprefix dos/,debug joy modemrtn vesa2 initvid sw gppro vesa12) \
        endmem init ui vcache
-CSRC := linux/zfilew linux/ztcp linux/zipxw chips/dsp1emu chips/seta10 chips/sdd1emu cpu/executec cpu/spc700c cpu/dspc cpu/dspw cfgload initc uic patch version \
+CSRC := linux/zfilew linux/ztcp linux/zipxw chips/dsp1emu chips/seta10 chips/sdd1emu cpu/executec cpu/spc700c cpu/dspc cpu/dspw cpu/cpuc cfgload initc uic patch version \
         effects/burn effects/water effects/smoke
 CXXSRC :=
 
