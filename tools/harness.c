@@ -95,7 +95,7 @@ static int statef = 0, statelen = 120, wramcrc = 0;
 static int resetf = -1, fuzz = 0, dspfuzz = 0, dspwfuzz = 0, cpufuzz = 0, hdmafuzz = 0, schedfuzz = 0, regwfuzz = 0;
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: %s core.so rom [-f N] [-s a,b] [-o prefix] [-w wav] [-i f:mask,...]\n", argv[0]); return 2; }
-    int frames = 120; const char *trace = NULL, *tracepath = NULL; const char *shots = "", *prefix = "shot", *wavp = NULL, *inputs = "";
+    const char *cheatcode = NULL; int frames = 120; const char *trace = NULL, *tracepath = NULL; const char *shots = "", *prefix = "shot", *wavp = NULL, *inputs = "";
     for (int i = 3; i + 1 < argc; i += 2) {
         if (!strcmp(argv[i], "-f")) frames = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-s")) shots = argv[i+1];
@@ -105,6 +105,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "-t")) trace = argv[i+1];
         else if (!strcmp(argv[i], "-T")) tracepath = argv[i+1];
         else if (!strcmp(argv[i], "-r")) resetf = atoi(argv[i+1]);
+        else if (!strcmp(argv[i], "-K")) cheatcode = argv[i+1];
         else if (!strcmp(argv[i], "-F")) fuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-D")) dspfuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-W")) dspwfuzz = atoi(argv[i+1]);
@@ -127,6 +128,7 @@ int main(int argc, char **argv) {
     retro_init_p();
     struct retro_game_info gi = { argv[2], NULL, 0, NULL };
     if (!retro_load_game_p(&gi)) { fprintf(stderr, "load_game failed\n"); return 1; }
+    if (cheatcode) { void (*cs)(unsigned, bool, const char *) = (void (*)(unsigned, bool, const char *))dlsym(h, "retro_cheat_set"); if (cs) cs(0, true, cheatcode); }
     struct retro_system_av_info av; retro_get_system_av_info_p(&av);
     fprintf(stderr, "av: %ux%u @ %.4f fps, %.0f Hz\n", av.geometry.base_width, av.geometry.base_height, av.timing.fps, av.timing.sample_rate);
     if (wavp) { wav = fopen(wavp, "wb"); wav_header(wav, 0); }

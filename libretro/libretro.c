@@ -19,6 +19,11 @@ static retro_input_state_t input_state_cb;
 static retro_log_printf_t log_cb;
 
 static int is_pal;
+#ifdef LIFTED
+static bool cheat_dirty;                 /* applied at the start of retro_run, once the guest has finished its init */
+static unsigned run_count;
+static void cheat_rebuild(void);
+#endif
 extern unsigned char romispal;
 static int16_t audio_buf[256 * 8];
 static int audio_frames_pending;   /* fractional accumulator, in 1/1000 frames */
@@ -109,6 +114,9 @@ bool retro_load_game(const struct retro_game_info *game)
         setenv("HOME", path, 1);
     }
     if (!zs_start(game->path)) return false;
+#ifdef LIFTED
+    run_count = 0; cheat_dirty = true;
+#endif
     is_pal = rom_is_pal(game->path);
     return true;
 }
@@ -124,6 +132,10 @@ void retro_reset(void) { zs_reset_req = 1; }
 void retro_run(void)
 {
     int p, i;
+#ifdef LIFTED
+    if (run_count > 0 && cheat_dirty) { cheat_rebuild(); cheat_dirty = false; }
+    run_count++;
+#endif
     input_poll_cb();
     for (p = 0; p < 2; p++) {
         uint16_t m = 0;
@@ -185,5 +197,64 @@ size_t retro_get_memory_size(unsigned id)
 {
     return id == RETRO_MEMORY_SYSTEM_RAM ? 131072 : id == RETRO_MEMORY_SAVE_RAM ? zs_sram_size() : 0;
 }
+#ifdef LIFTED
+/* Cheats: Pro Action Replay style RAM codes ("7E1234AB", several lines separated by '+' or spaces).  They go into ZSNES's
+ * cheat table (28-byte entries: flags, value, address16, bank), which the scheduler applies once per frame through the
+ * bank write handlers.  Game Genie (ROM patch) codes are not supported. */
+extern unsigned char cheatdata[];
+extern unsigned int NumCheats, CheatOn;
+#define CHEAT_SLOTS 128
+#define CHEAT_LINES 16
+static struct { unsigned char val, bank; unsigned short addr; } cheat_line[CHEAT_SLOTS][CHEAT_LINES];
+static unsigned char cheat_nlines[CHEAT_SLOTS];
+static bool cheat_on[CHEAT_SLOTS];
+
+static int hexv(int c) { return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1; }
+
+static void cheat_rebuild(void)
+{
+    unsigned n = 0, i, k;
+    memset(cheatdata, 0, 28 * 255);
+    for (i = 0; i < CHEAT_SLOTS; i++) {
+        if (!cheat_on[i]) continue;
+        for (k = 0; k < cheat_nlines[i] && n < 255; k++, n++) {
+            unsigned char *e = cheatdata + 28 * n;
+            e[0] = 0; e[1] = cheat_line[i][k].val;
+            e[2] = (unsigned char)cheat_line[i][k].addr; e[3] = (unsigned char)(cheat_line[i][k].addr >> 8);
+            e[4] = cheat_line[i][k].bank;
+        }
+    }
+    NumCheats = n;
+    CheatOn = n ? 1 : 0;
+}
+
+void retro_cheat_reset(void)
+{
+    memset(cheat_nlines, 0, sizeof cheat_nlines); memset(cheat_on, 0, sizeof cheat_on);
+    cheat_dirty = true;
+}
+void retro_cheat_set(unsigned idx, bool enabled, const char *code)
+{
+    unsigned digits[8], nd = 0, nl = 0;
+    if (idx >= CHEAT_SLOTS || !code) return;
+    for (; *code; code++) {
+        int h = hexv(*code);
+        if (h < 0) { if (nd) nd = 0; continue; }   /* a separator inside a group drops the group */
+        digits[nd++] = (unsigned)h;
+        if (nd == 8) {
+            if (nl < CHEAT_LINES) {
+                cheat_line[idx][nl].bank = (unsigned char)((digits[0] << 4) | digits[1]);
+                cheat_line[idx][nl].addr = (unsigned short)((digits[2] << 12) | (digits[3] << 8) | (digits[4] << 4) | digits[5]);
+                cheat_line[idx][nl].val = (unsigned char)((digits[6] << 4) | digits[7]);
+                nl++;
+            }
+            nd = 0;
+        }
+    }
+    cheat_nlines[idx] = (unsigned char)nl; cheat_on[idx] = enabled && nl;
+    cheat_dirty = true;
+}
+#else
 void retro_cheat_reset(void) {}
 void retro_cheat_set(unsigned i, bool e, const char *c) {}
+#endif
