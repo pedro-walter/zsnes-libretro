@@ -42,7 +42,7 @@ extern u32 regptw, regptr;                   /* guest pointer slots */
 extern u32 tableadc[256];
 
 typedef struct {
-    u16 *ptr, *ptrb, *ptrc, *ptrd; u32 *ptrx, *ptry; u8 *scsize; u16 *objptr, *scrolx, *scroly;
+    u16 *f_ptr, *f_ptrb, *f_ptrc, *f_ptrd; u32 *f_ptrx, *f_ptry; u8 *f_scsize; u16 *f_objptr, *f_scrolx, *f_scroly;
 } bg_t;
 extern u16 bg1ptr, bg2ptr, bg3ptr, bg4ptr, bg1ptrb, bg2ptrb, bg3ptrb, bg4ptrb, bg1ptrc, bg2ptrc, bg3ptrc, bg4ptrc;
 extern u16 bg1ptrd, bg2ptrd, bg3ptrd, bg4ptrd, bg1objptr, bg2objptr, bg3objptr, bg4objptr;
@@ -230,16 +230,16 @@ static void bgreg(int n, u32 al)
     const bg_t *b = &BG[n];
     u16 bx = (u16)((u8)(al >> 2) << 11);
     u8 sc = al & 3;
-    *b->ptr = *b->ptrb = *b->ptrc = *b->ptrd = bx;
-    *b->ptrx = 0; *b->ptry = 0;
-    *b->scsize = sc;
-    if (sc == 1) { *b->ptrb += 0x800; *b->ptrd += 0x800; *b->ptrx = 0x800; }
-    if (sc == 2) { *b->ptrc += 0x800; *b->ptrd += 0x800; *b->ptry = 0x800; }
-    if (sc == 3) { *b->ptrb += 0x800; *b->ptrc += 0x1000; *b->ptrd += 0x1800; *b->ptrx = 0x800; *b->ptry = 0x1000; }
+    *b->f_ptr = *b->f_ptrb = *b->f_ptrc = *b->f_ptrd = bx;
+    *b->f_ptrx = 0; *b->f_ptry = 0;
+    *b->f_scsize = sc;
+    if (sc == 1) { *b->f_ptrb += 0x800; *b->f_ptrd += 0x800; *b->f_ptrx = 0x800; }
+    if (sc == 2) { *b->f_ptrc += 0x800; *b->f_ptrd += 0x800; *b->f_ptry = 0x800; }
+    if (sc == 3) { *b->f_ptrb += 0x800; *b->f_ptrc += 0x1000; *b->f_ptrd += 0x1800; *b->f_ptrx = 0x800; *b->f_ptry = 0x1000; }
 }
 
-static void scrx(int n, u32 al) { u16 *p = BG[n].scrolx; LO(p) = HI(p); HI(p) = (u8)al; }
-static void scry(int n, u32 al) { u16 *p = BG[n].scroly; LO(p) = (u8)(HI(p) + bgscroltemp); HI(p) = (u8)al; }
+static void scrx(int n, u32 al) { u16 *p = BG[n].f_scrolx; LO(p) = HI(p); HI(p) = (u8)al; }
+static void scry(int n, u32 al) { u16 *p = BG[n].f_scroly; LO(p) = (u8)(HI(p) + bgscroltemp); HI(p) = (u8)al; }
 
 static void set16x16(u32 al)
 {

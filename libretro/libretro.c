@@ -4,6 +4,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include "libretro.h"
+#ifdef _WIN32
+#include <direct.h>
+#define mkdir(p, m) _mkdir(p)
+#define setenv(k, v, o) _putenv_s(k, v)
+#endif
 #include "platform.h"
 
 static retro_environment_t env_cb;

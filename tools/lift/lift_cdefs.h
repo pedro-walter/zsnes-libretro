@@ -18,3 +18,6 @@ char *zl_strdup(const char *s);
 #define calloc(n, m)   zl_calloc(n, m)
 #define realloc(p, n)  zl_realloc(p, n)
 #define strdup(s)      zl_strdup(s)
+
+#define outofmemory zs_outofmemory
+void zs_outofmemory(void);

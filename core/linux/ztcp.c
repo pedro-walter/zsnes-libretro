@@ -86,6 +86,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 //     only be done if the requested packet is within the past 64 packets.
 //   In-game chat will be moved to a separate packet in TCP/IP
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+#endif
 #include "gblhdr.h"
 
 #ifdef __LINUX__

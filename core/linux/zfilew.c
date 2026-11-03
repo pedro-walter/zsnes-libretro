@@ -462,7 +462,7 @@ DWORD GetDate()
 extern char SRAMDir[1024];
 extern char LoadDir[512];
 
-#ifdef __LINUX__
+#if defined(__LINUX__) || defined(__WIN32__)
 
 char zcfgdir[1024];
 #define ZCFG_DIR "/.zsnes"
@@ -474,7 +474,11 @@ void obtaindir()
   char *allocated = 0;
   DIR *tmp;
 
+  #ifdef __WIN32__
+  if ((homedir = (char *)getenv("USERPROFILE")) == 0)
+#else
   if ((homedir = (char *)getenv("HOME")) == 0)
+#endif
   {
     homedir = allocated = (char *)malloc(ZCFG_DIR_LEN);
     getcwd(homedir, ZCFG_DIR_LEN);

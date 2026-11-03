@@ -1,9 +1,12 @@
 # Lifted (x86 asm -> C) build:  make -f Makefile.lift BITS=32|64
 BITS ?= 64
+OSDEF ?= -D__LINUX__
+ASFLAGS ?= -Wa,--noexecstack
+LDLIBS ?= -lm
 L     := build/lift
 O     ?= build/lift$(BITS)
 CC    := gcc -m$(BITS)
-CFL   := $(CFEXTRA) -O1 -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore -D__LINUX__ -DNO_PNG -DLIFTED
+CFL   := $(CFEXTRA) -O1 -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore $(OSDEF) -DNO_PNG -DLIFTED
 LIFTC := $(wildcard $(L)/lift_*.c)
 LOBJ  := $(patsubst $(L)/%.c,$(O)/%.o,$(LIFTC))
 
@@ -16,21 +19,25 @@ $(O)/lift_rt.o: tools/lift/lift_rt.c tools/lift/lift.h $(L)/lift_syms.h
 	$(CC) $(CFL) -c -o $@ $<
 $(O)/lift_data.o: $(L)/lift_data.bin
 	@mkdir -p $(O)
-	printf '.section .rodata\n.globl lift_data_bin\nlift_data_bin:\n.incbin "$(L)/lift_data.bin"\n.globl lift_data_bin_len\nlift_data_bin_len:\n.long %d\n' $$(stat -c %s $(L)/lift_data.bin) > $(O)/lift_data.s
-	$(CC) -Wa,--noexecstack -c -o $@ $(O)/lift_data.s
+	printf '.section .rodata\n.globl lift_data_bin\nlift_data_bin:\n.globl _lift_data_bin\n_lift_data_bin:\n.incbin "$(L)/lift_data.bin"\n.globl lift_data_bin_len\nlift_data_bin_len:\n.globl _lift_data_bin_len\n_lift_data_bin_len:\n.long %d\n' $$(stat -c %s $(L)/lift_data.bin) > $(O)/lift_data.s
+	$(CC) $(ASFLAGS) -c -o $@ $(O)/lift_data.s
 
 FPX := $(if $(filter 64,$(BITS)),-mfpmath=387,)
 # hand-written C overriding lifted asm functions (tools/lift/overrides.txt); plain C, guest data via absolute symbols
 HSRCS := $(wildcard core/zl/*.c)
+HFIXED := $(patsubst core/zl/%.c,$(O)/h/%.c,$(HSRCS))
 HOBJ  := $(patsubst core/zl/%.c,$(O)/h/%.o,$(HSRCS))
-$(O)/h/%.o: core/zl/%.c core/zl/zl.h tools/lift/lift.h $(L)/lift_syms.h
+$(O)/h/cfixed.stamp: $(HSRCS) $(L)/lift_cvars.txt tools/lift/cfix.py
 	@mkdir -p $(O)/h
-	$(CC) $(CFL) -Icore/zl -c -o $@ $<
+	python3 tools/lift/cfix.py $(L)/lift_cvars.txt $(O)/h $(HSRCS)
+	touch $@
+$(O)/h/%.o: $(O)/h/cfixed.stamp core/zl/zl.h core/zl/x86dec.h core/zl/cpu_stubs.h tools/lift/lift.h $(L)/lift_syms.h
+	$(CC) $(CFL) -Icore/zl -c -o $@ $(O)/h/$*.c
 
 # C sources shared with the guest: variables are moved into the arena by tools/lift/cfix.py
 CSRCS := core/initc.c core/uic.c core/cfgload.c core/patch.c core/version.c core/linux/zfilew.c core/linux/ztcp.c \
          core/chips/dsp1emu.c core/chips/seta10.c core/chips/sdd1emu.c core/cpu/executec.c \
-         core/effects/burn.c core/effects/water.c core/effects/smoke.c libretro/platform.c libretro/libretro.c
+         core/effects/burn.c core/effects/water.c core/effects/smoke.c libretro/platform.c libretro/libretro.c libretro/winco.c
 CFIXED := $(patsubst %.c,$(O)/c/%.c,$(notdir $(CSRCS)))
 COBJ   := $(patsubst %.c,$(O)/c/%.o,$(notdir $(CSRCS)))
 $(O)/c/cfixed.stamp: $(CSRCS) $(L)/lift_cvars.txt tools/lift/cfix.py
@@ -44,12 +51,12 @@ $(O)/c/%.o: $(O)/c/cfixed.stamp tools/lift/lift_cdefs.h
 	$(CC) $(CFL) -include tools/lift/lift_cdefs.h -I$(dir $(firstword $(CSRCS))) -Icore/linux -Icore/chips -Icore/cpu -Icore/effects -c -o $@ $(O)/c/$*.c
 
 $(O)/zsnes_lifted.so: $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(HOBJ) $(L)/lift_syms.ld
-	$(CC) -shared -o $@ $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(HOBJ) $(L)/lift_syms.ld -lm
+	$(CC) -shared -o $@ $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(HOBJ) $(L)/lift_syms.ld $(LDLIBS)
 
 # Regenerate the lifted C from the pristine upstream asm objects (build/ref/**/*.ao, built by the main Makefile) and
 # rebuild.  Needs python3 with capstone + pyelftools.
 gen:
-	$(MAKE) -f Makefile refobjs B=build
+	CPATH=$${CPATH:-/usr/include/x86_64-linux-gnu} $(MAKE) -f Makefile refobjs B=build
 	python3 tools/lift/gen.py $(L)
 	cp tools/lift/lift.h tools/lift/lift_mmx.h $(L)/
 .PHONY: all gen
@@ -69,4 +76,18 @@ dist64:
 	cp build/lift64/zsnes_lifted.so dist/zsnes_libretro.so
 	cp zsnes_libretro.info dist/
 	@echo "dist/zsnes_libretro.so  (copy both files into RetroArch's cores / info directories)"
-.PHONY: dist64
+WINFLAGS := -Ilibretro/shim -include sys/stat.h -include dirent.h
+# cross builds (need gcc-mingw-w64 / gcc-aarch64-linux-gnu / gcc-arm-linux-gnueabihf):  make -f Makefile.lift distwin64 distarm64 ...
+distwin64:
+	$(MAKE) -f Makefile.lift CC=x86_64-w64-mingw32-gcc BITS=64 FPX=-mfpmath=387 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win64 -j8
+	mkdir -p dist && cp build/win64/zsnes_lifted.so dist/zsnes_libretro_win64.dll
+distwin32:
+	$(MAKE) -f Makefile.lift CC=i686-w64-mingw32-gcc BITS=32 FPX= 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win32 -j8
+	mkdir -p dist && cp build/win32/zsnes_lifted.so dist/zsnes_libretro_win32.dll
+distarm64:
+	$(MAKE) -f Makefile.lift CC=aarch64-linux-gnu-gcc BITS=64 FPX= O=build/arm64 -j8
+	mkdir -p dist && cp build/arm64/zsnes_lifted.so dist/zsnes_libretro_aarch64.so
+distarm32:
+	$(MAKE) -f Makefile.lift CC=arm-linux-gnueabihf-gcc BITS=32 FPX= O=build/arm32 -j8
+	mkdir -p dist && cp build/arm32/zsnes_lifted.so dist/zsnes_libretro_armhf.so
+.PHONY: dist64 distwin64 distwin32 distarm64 distarm32

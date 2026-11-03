@@ -11,9 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#ifdef _WIN32
-#include <windows.h>
-#else
+#ifndef _WIN32
 #include <ucontext.h>
 #endif
 #include <zlib.h>
@@ -81,9 +79,13 @@ uint16_t zs_pad[2];  /* RETRO_DEVICE_ID_JOYPAD_* bitmask per port */
 
 /* coroutine primitives: ucontext on POSIX, fibers on Windows */
 #ifdef _WIN32
-static LPVOID main_fib, emu_fib;
-#define CO_TO_MAIN()  SwitchToFiber(main_fib)
-#define CO_TO_EMU()   SwitchToFiber(emu_fib)
+/* fibers: libretro/winco.c (windows.h clashes with ZSNES function names) */
+int winco_init(void (*entry)(void), unsigned stack);
+void winco_free(void);
+void winco_to_main(void);
+void winco_to_emu(void);
+#define CO_TO_MAIN()  winco_to_main()
+#define CO_TO_EMU()   winco_to_emu()
 #else
 static ucontext_t main_ctx, emu_ctx;
 #define CO_TO_MAIN()  swapcontext(&emu_ctx, &main_ctx)
@@ -127,10 +129,6 @@ static void poll_input(void)
 
 /* ---------------- coroutine plumbing ---------------- */
 
-#ifdef _WIN32
-static void emu_entry(void);
-static VOID CALLBACK emu_fiber_proc(LPVOID p) { (void)p; emu_entry(); }
-#endif
 static void emu_entry(void)
 {
     zs_call_asm(zstart);
@@ -154,10 +152,7 @@ int zs_start(const char *rom_path)
     zs_call_asm(makeextension);
 
 #ifdef _WIN32
-    if (!main_fib) { main_fib = IsThreadAFiber() ? GetCurrentFiber() : ConvertThreadToFiber(NULL); if (!main_fib) return 0; }
-    if (emu_fib) DeleteFiber(emu_fib);
-    emu_fib = CreateFiber(EMU_STACK_SIZE, emu_fiber_proc, NULL);
-    if (!emu_fib) return 0;
+    if (!winco_init(emu_entry, EMU_STACK_SIZE)) return 0;
 #else
     emu_stack = malloc(EMU_STACK_SIZE);
     if (!emu_stack) return 0;
@@ -192,7 +187,7 @@ int zs_run_frame(void)
 void zs_stop(void)
 {
 #ifdef _WIN32
-    if (emu_fib) { DeleteFiber(emu_fib); emu_fib = NULL; }
+    winco_free();
 #endif
     free(emu_stack);
     emu_stack = NULL;
@@ -374,3 +369,6 @@ size_t zs_state_size(void) { return 0; }
 int zs_state_save(void *buf, size_t n) { return 0; }
 int zs_state_load(const void *buf, size_t n) { return 0; }
 #endif
+
+/* legacy C calls this when an allocation fails */
+void zs_outofmemory(void) { fprintf(stderr, "zsnes: out of memory\n"); zs_fatal(); }

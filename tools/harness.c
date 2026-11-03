@@ -8,7 +8,16 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdarg.h>
+#ifdef _WIN32
+#include <windows.h>
+#define RTLD_NOW 0
+#define RTLD_LOCAL 0
+static void *dlopen(const char *p, int f) { (void)f; return (void *)LoadLibraryA(p); }
+static void *dlsym(void *h, const char *n) { return (void *)GetProcAddress((HMODULE)h, n); }
+static const char *dlerror(void) { static char b[64]; snprintf(b, sizeof b, "LoadLibrary error %lu", GetLastError()); return b; }
+#else
 #include <dlfcn.h>
+#endif
 #ifdef NO_ZLIB   /* cross builds without zlib: own crc32, no PNG compression */
 typedef unsigned char Bytef; typedef unsigned long uLong, uLongf;
 static uLong crc32(uLong c0, const Bytef *d, unsigned n) { unsigned c = ~(unsigned)c0; while (n--) { c ^= *d++; for (int k = 0; k < 8; k++) c = (c >> 1) ^ (0xEDB88320u & -(c & 1)); } return ~c; }
