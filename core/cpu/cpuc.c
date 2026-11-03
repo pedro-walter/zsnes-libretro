@@ -47,6 +47,11 @@ extern void *Bank0datr8[256], *Bank0datr16[256], *Bank0datw8[256], *Bank0datw16[
 extern void *tableadb[256], *tableadc[256];
 extern void membank0r8(void), membank0r16(void), membank0w8(void), membank0w16(void);
 extern void zs_mcall(void *fn);
+extern u32 snesmmap[256], snesmap2[256];
+extern u8 regaccessbankr8[], dmadata[];
+extern u16 brkv, brkv8, copv, copv8;
+extern u8 xirqb;
+extern void changeexecloop(void);
 
 #define XA8 (*(u8 *)&xa)
 #define XA16 (*(u16 *)&xa)
@@ -259,16 +264,94 @@ static inline void branch(int taken)
     R.esi += 1;
 }
 
+
+/* ---- PC reload helpers (esi := map[bank] + offset, initaddrl := map[bank]) ---- */
+/* tail used by JMP $4C / JSR $20 / RTI: lower-half addresses >= $4300 get the DMA register check */
+static void pc_load(int dmacheck)
+{
+    u32 eax = R.eax, ebx = R.ebx;
+    if (eax & 0x8000) {
+        R.esi = snesmmap[ebx]; initaddrl = R.esi; R.esi += eax;
+        return;
+    }
+    R.esi = snesmap2[ebx];
+    if (dmacheck && eax >= 0x4300) {
+        if (memtabler8[ebx] == (void *)regaccessbankr8) R.esi = (u32)dmadata - 0x4300;
+    }
+    initaddrl = R.esi;
+    R.esi += eax;
+}
+static inline void setxhi(void) { ((u8 *)&xx)[1] = 0; ((u8 *)&xy)[1] = 0; }
+static inline void stk_dec(u32 *cx) { *cx = ((u16)*cx - 1) | stackor; }
+/* membank0w8 with al, cx = stack pointer; leaves cx decremented (|stackor) */
+static inline void pushb_cx(u8 v) { set_al(v); zs_mcall(membank0w8); set_cx(((u16)R.ecx - 1) | stackor); }
+static inline u8 popb_cx(void) { set_cx(((u16)R.ecx + 1) & stackand); zs_mcall(membank0r8); return (u8)R.eax; }
+/* base of the mapping the CPU is currently fetching from (uses xpc/xpb like the BRK/BRL/PER macros) */
+static u32 cur_base(void)
+{
+    set_bl(xpb);
+    return ((u16)xpc & 0x8000) ? snesmmap[R.ebx] : snesmap2[R.ebx];
+}
+static void irq_entry(u16 vec_n, u16 vec_e)
+{
+    u8 *wr_ = (u8 *)wramdata;
+    u32 base, bx;
+    R.esi += 1;                                          /* inc esi (signature byte) */
+    base = cur_base();
+    R.ebx = R.esi; R.ebx -= base; xpc = (u16)R.ebx;      /* mov ebx,esi; sub ebx,eax; mov [xpc],bx */
+    if (!(xe & 1)) {
+        R.eax = wramdata; R.ebx = 0; set_cx(0);
+        bx = (u16)xs;
+        wr_[bx] = (u8)xpb;
+        bx = (((bx - 1) & 0xFFFF) & stackand) | stackor;
+        wr_[bx] = (u8)(xpc >> 8);
+        bx = (((bx - 1) & 0xFFFF) & stackand) | stackor;
+        wr_[bx] = (u8)xpc;
+        bx = (((bx - 1) & 0xFFFF) & stackand) | stackor;
+        makedl(); wr_[bx] = DL;
+        bx = (((bx - 1) & 0xFFFF) & stackand) | stackor;
+        xs = (xs & 0xFFFF0000u) | (u16)bx;
+        R.ebx = (u8)xirqb; xpb = (xpb & ~0xFFu) | (u8)xirqb;
+        R.eax = vec_n; xpc = vec_n;
+    } else {
+        R.eax = wramdata; R.ebx = 0;
+        bx = (u16)xs;
+        wr_[bx] = (u8)(xpc >> 8);
+        bx = (((bx - 1) & 0xFFFF) & stackand) | stackor;
+        wr_[bx] = (u8)xpc;
+        bx = (((bx - 1) & 0xFFFF) & stackand) | stackor;
+        makedl(); wr_[bx] = DL;
+        bx = (((bx - 1) & 0xFFFF) & stackand) | stackor;
+        xs = (xs & 0xFFFF0000u) | (u16)bx;
+        R.ebx = (u8)xpb;
+        R.eax = vec_e; xpc = vec_e;
+    }
+    DL = (DL & 0xF3) | 0x04;
+    pc_load(0);
+}
+
 /* 8-bit / 16-bit read-modify-write ALU kernels: value in/out through *v, flags like the asm */
 static inline void shl_flags8(u8 *v, int carry_out) { nz8(*v); flagc = carry_out ? 0xFF : 0; }
 static inline void shl_flags16(u16 *v, int carry_out) { nz16(*v); flagc = carry_out ? 0xFF : 0; }
 
 /* returns 1 if handled (ADC/SBC with D set are never routed here: the D tables keep the asm handlers) */
 unsigned long zs_cpu_opcount;
+static int zs_cpu_op_inner(u32 op, u32 var);
 HID __attribute__((force_align_arg_pointer)) int zs_cpu_op(u32 op, u32 var)
 {
+    static int brk = -1;
+    int r;
     zs_cpu_opcount++;
-    { static int brk = -1; if (brk < 0) brk = getenv("ZS_CPU_BREAK") != NULL; if (brk && op == 0x85 && (DL & 0x20)) XA8 ^= 1; }
+    if (brk < 0) { const char *e = getenv("ZS_CPU_BREAK"); brk = e ? atoi(e) : 0; }
+    if (brk == 1 && op == 0x85 && (DL & 0x20)) XA8 ^= 1;
+    r = zs_cpu_op_inner(op, var);
+    if (brk == 2 && op == 0x60) R.esi += 1;
+    if (brk == 3 && op == 0x40) DL ^= 0x04;
+    if (brk == 4 && op == 0x54) XA16 ^= 1;
+    return r;
+}
+static int zs_cpu_op_inner(u32 op, u32 var)
+{
     int m8 = (DL & 0x20) != 0, x8 = (DL & 0x10) != 0;
     int grp = (op >> 5) & 7, lo = op & 0x1F;
     int mode = -1;
@@ -522,6 +605,225 @@ HID __attribute__((force_align_arg_pointer)) int zs_cpu_op(u32 op, u32 var)
     case 0xD0: branch((flagnz & 0xFFFF) != 0); return 1;
     case 0xF0: branch((flagnz & 0xFFFF) == 0); return 1;
     case 0x80: { s8 d = *(s8 *)PC(); R.esi += 1; R.esi += (u32)(s32)d; return 1; }
+
+    /* ---- control flow ---- */
+    case 0x4C: R.eax = rd16h(PC()); set_bl(xpb); xpc = (u16)R.eax; pc_load(1); return 1;
+    case 0x5C: R.eax = rd16h(PC()); set_bl(PC()[2]); xpb = (xpb & ~0xFFu) | (u8)R.ebx; xpc = (u16)R.eax; pc_load(0); return 1;
+    case 0x6C:
+        set_cx(rd16h(PC())); R.eax = 0; zs_mcall(membank0r16);
+        xpc = (u16)R.eax; set_bl(xpb); pc_load(0); return 1;
+    case 0x7C:
+        set_cx(rd16h(PC())); R.eax = 0; set_cx((u16)R.ecx + (u16)xx); set_bl(xpb);
+        zs_mcall(memtabler16[R.ebx]);
+        xpc = (u16)R.eax; set_bl(xpb); pc_load(0); return 1;
+    case 0xDC: {
+        u16 axs;
+        set_cx(rd16h(PC())); R.eax = 0; zs_mcall(membank0r16);
+        set_cx((u16)R.ecx + 2); axs = (u16)R.eax;
+        zs_mcall(membank0r8);
+        set_bl(R.eax); set_ax(axs);
+        xpc = (u16)R.eax; xpb = (xpb & ~0xFFu) | (u8)R.ebx;
+        pc_load(0); return 1;
+    }
+    case 0x20: {
+        u16 off;
+        R.ebx = R.esi - initaddrl; R.ebx = (R.ebx & 0xFFFF0000u) | (u16)(R.ebx + 1); xpc = (u16)R.ebx;
+        set_cx(xs);
+        pushb_cx((u8)(xpc >> 8));
+        pushb_cx((u8)xpc);
+        R.eax = 0;
+        xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+        R.eax = rd16h(PC()); R.ebx &= ~0xFF00u; xpc = (u16)R.eax; set_bl(xpb);
+        (void)off; pc_load(1); return 1;
+    }
+    case 0x22: {
+        R.ebx = R.esi - initaddrl; R.ebx = (R.ebx & 0xFFFF0000u) | (u16)(R.ebx + 2); xpc = (u16)R.ebx;
+        set_cx(xs);
+        pushb_cx((u8)xpb);
+        pushb_cx((u8)(xpc >> 8));
+        pushb_cx((u8)xpc);
+        xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+        R.eax = 0; R.ebx &= ~0xFF00u;
+        R.eax = rd16h(PC()); set_bl(PC()[2]); xpc = (u16)R.eax; xpb = (xpb & ~0xFFu) | (u8)R.ebx;
+        pc_load(0); return 1;
+    }
+    case 0xFC:
+        R.ebx = R.esi - initaddrl; R.ebx = (R.ebx & 0xFFFF0000u) | (u16)(R.ebx + 1); xpc = (u16)R.ebx;
+        set_cx(xs);
+        pushb_cx((u8)(xpc >> 8));
+        pushb_cx((u8)xpc);
+        R.eax = 0; xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+        R.eax = 0; R.ebx &= ~0xFF00u;
+        set_cx(rd16h(PC())); set_bl(xpb); set_cx((u16)R.ecx + (u16)xx);
+        zs_mcall(memtabler16[R.ebx]);
+        xpc = (u16)R.eax; set_bl(xpb); pc_load(0); return 1;
+    case 0x60:
+        set_cx(((u16)xs + 1) & stackand); zs_mcall(membank0r8); ((u8 *)&xpc)[0] = (u8)R.eax;
+        set_cx(((u16)R.ecx + 1) & stackand); zs_mcall(membank0r8); ((u8 *)&xpc)[1] = (u8)R.eax;
+        xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+        R.ebx &= ~0xFF00u; R.eax = (u16)(xpc + 1); xpc = (u16)R.eax; set_bl(xpb);
+        pc_load(0); return 1;
+    case 0x6B:
+        set_cx(((u16)xs + 1) & stackand); R.eax = 0; zs_mcall(membank0r8); ((u8 *)&xpc)[0] = (u8)R.eax;
+        set_cx(((u16)R.ecx + 1) & stackand); R.eax = 0; zs_mcall(membank0r8); ((u8 *)&xpc)[1] = (u8)R.eax;
+        set_cx(((u16)R.ecx + 1) & stackand); R.eax = 0; zs_mcall(membank0r8); xpb = (xpb & ~0xFFu) | (u8)R.eax;
+        xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+        R.ebx &= ~0xFF00u; R.eax = (u16)(xpc + 1); set_bl(xpb); xpc = (u16)R.eax;
+        pc_load(0); return 1;
+    case 0x82: {
+        u32 base;
+        R.eax = (R.eax & 0xFFFF0000u) | xpc; set_bl(xpb);
+        base = (R.eax & 0x8000) ? snesmmap[R.ebx] : snesmap2[R.ebx];
+        R.eax = base;
+        R.ebx = R.esi; R.ebx -= R.eax;
+        R.ebx = (R.ebx & 0xFFFF0000u) | (u16)(R.ebx + 2);
+        R.eax = 0;
+        R.ebx = (R.ebx & 0xFFFF0000u) | (u16)((u16)R.ebx + rd16h(PC()));
+        R.eax = (u16)R.ebx;
+        R.ebx = 0; xpc = (u16)R.eax; set_bl(xpb);
+        pc_load(0); return 1;
+    }
+    case 0x62: {
+        u32 base;
+        set_bl(xpb); R.eax = (R.eax & 0xFFFF0000u) | xpc;
+        base = (R.eax & 0x8000) ? snesmmap[R.ebx] : snesmap2[R.ebx];
+        R.eax = base;
+        R.ebx = R.esi; R.ebx -= R.eax;
+        R.ebx = (R.ebx & 0xFFFF0000u) | (u16)((u16)R.ebx + rd16h(PC()));
+        R.eax = (R.eax & 0xFFFF0000u) | (u16)R.ebx;
+        R.esi += 2;
+        R.eax = (R.eax & 0xFFFF0000u) | (u16)((u16)R.eax + 2);
+        set_cx(xs);
+        { u16 axs = (u16)R.eax; set_al(axs >> 8); zs_mcall(membank0w8); set_cx(((u16)R.ecx - 1) | stackor); set_ax(axs); }
+        zs_mcall(membank0w8); set_cx(((u16)R.ecx - 1) | stackor);
+        xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+        R.ebx = 0; return 1;
+    }
+    case 0xF4:
+        set_cx(xs);
+        set_al(PC()[1]); zs_mcall(membank0w8); set_cx(((u16)R.ecx - 1) | stackor);
+        set_al(PC()[0]); zs_mcall(membank0w8); set_cx(((u16)R.ecx - 1) | stackor);
+        xs = (xs & 0xFFFF0000u) | (u16)R.ecx; R.esi += 2; return 1;
+    case 0xD4: {
+        u16 axs;
+        set_ax((u16)PC()[0]); R.eax &= ~0xFF00u; /* xor ah,ah; mov al,[esi] */
+        R.ecx = xd; R.esi += 1;
+        set_cx((u16)R.ecx + (u16)R.eax);
+        zs_mcall(membank0r16);
+        set_cx(xs);
+        axs = (u16)R.eax;
+        set_al(axs >> 8); zs_mcall(membank0w8); set_cx(((u16)R.ecx - 1) | stackor);
+        set_ax(axs);
+        zs_mcall(membank0w8); set_cx(((u16)R.ecx - 1) | stackor);
+        xs = (xs & 0xFFFF0000u) | (u16)R.ecx; return 1;
+    }
+    /* ---- P register ops ---- */
+    case 0x28: {
+        set_cx(((u16)xs + 1) & stackand); zs_mcall(membank0r8);
+        xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+        R.ebx &= ~0xFF00u; DL = (u8)R.eax; restoredl();
+        if (xe & 1) { DL |= 0x30; switch_table(var); return 1; }
+        switch_table(var);
+        if (DL & 0x10) setxhi();
+        return 1;
+    }
+    case 0xC2: {
+        u8 al = *PC(); R.esi += 1; set_al(al);
+        if (al & 0xC3) { makedl(); DL &= (u8)~al; restoredl(); } else DL &= (u8)~al;
+        if (xe & 1) DL |= 0x30;
+        switch_table(var); return 1;
+    }
+    case 0xE2: {
+        u8 al = *PC(); R.esi += 1; set_al(al);
+        if (al & 0xC3) { makedl(); DL |= al; restoredl(); } else DL |= al;
+        switch_table(var);
+        if (DL & 0x10) setxhi();
+        return 1;
+    }
+    case 0xFB: {
+        u8 al = (u8)(flagc & 1);
+        set_al(al); flagc = 0;
+        if (xe == al) return 1;
+        if (xe) flagc = 0xFF;
+        xe = al;
+        if (!(xe & 1)) { DL |= 0x20; stackand = 0xFFFF; stackor = 0; return 1; }
+        DL |= 0x30; switch_table(var);
+        ((u8 *)&xx)[1] = 0; ((u8 *)&xy)[1] = 0; ((u8 *)&xs)[1] = 1;
+        stackand = 0x01FF; stackor = 0x0100;
+        return 1;
+    }
+    case 0x00: irq_entry(brkv, brkv8); return 1;
+    case 0x02: irq_entry(copv, copv8); return 1;
+    case 0x40: {
+        if (nmistatus == 3) {
+            if (curexecstate & 1) { curexecstate &= 0xFE; zs_mcall(changeexecloop); }
+            if (curexecstate == 0) DH = 0;
+        }
+        curnmi = 0;
+        if (!(xe & 1)) {
+            set_cx(((u16)xs + 1) & stackand); zs_mcall(membank0r8);
+            xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+            DL = (u8)R.eax; restoredl();
+            set_cx(((u16)xs + 1) & stackand); R.eax = 0; zs_mcall(membank0r8); ((u8 *)&xpc)[0] = (u8)R.eax;
+            set_cx(((u16)R.ecx + 1) & stackand); R.eax = 0; zs_mcall(membank0r8); ((u8 *)&xpc)[1] = (u8)R.eax;
+            set_cx(((u16)R.ecx + 1) & stackand); R.eax = 0; zs_mcall(membank0r8); xpb = (xpb & ~0xFFu) | (u8)R.eax;
+            xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+            R.ebx &= ~0xFF00u; R.eax = xpc;
+            set_bl(DL); R.edi = (u32)(var ? tableadc[R.ebx & 0xFF] : tableadb[R.ebx & 0xFF]);
+            set_bl(xpb); xpc = (u16)R.eax;
+        } else {
+            set_cx(((u16)xs + 1) & stackand); zs_mcall(membank0r8);
+            xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+            DL = (u8)R.eax | 0x30; restoredl();
+            set_cx(((u16)xs + 1) & stackand); R.eax = 0; zs_mcall(membank0r8); ((u8 *)&xpc)[0] = (u8)R.eax;
+            set_cx(((u16)R.ecx + 1) & stackand); R.eax = 0; zs_mcall(membank0r8); ((u8 *)&xpc)[1] = (u8)R.eax;
+            xs = (xs & 0xFFFF0000u) | (u16)R.ecx;
+            R.ebx &= ~0xFF00u; R.eax = xpc;
+            set_bl(DL); R.edi = (u32)(var ? tableadc[R.ebx & 0xFF] : tableadb[R.ebx & 0xFF]);
+            set_bl(0); xpc = (u16)R.eax;
+            if (xpc & 0x8000) { R.esi = snesmmap[R.ebx]; initaddrl = R.esi; R.esi += R.eax; }
+            else { R.esi = snesmap2[R.ebx]; initaddrl = R.esi; R.esi += R.eax; }
+            return 1;
+        }
+        /* native-mode tail: set esi, handle WAI marker / DMA area / 16-bit index high bytes */
+        R.eax = xpc;
+        if (R.eax & 0x8000) {
+            R.esi = snesmmap[R.ebx]; initaddrl = R.esi; R.esi += R.eax;
+            if (*PC() == 0xCB) intrset = 2;
+        } else {
+            R.esi = snesmap2[R.ebx];
+            if (R.eax >= 0x4300) {
+                if (memtabler8[R.ebx] == (void *)regaccessbankr8) { R.esi = (u32)dmadata - 0x4300; initaddrl = R.esi; R.esi += R.eax; }
+                else { doirqnext = 0; initaddrl = R.esi; R.esi += R.eax; }
+            } else {
+                initaddrl = R.esi; R.esi += R.eax;
+                if (*PC() == 0xCB) intrset = 2;
+            }
+        }
+        if (DL & 0x10) setxhi();
+        return 1;
+    }
+    case 0xCB:
+        if (intrset == 1) { R.esi -= 1; return 1; }
+        if (intrset == 0) { intrset = 1; R.esi -= 1; return 1; }
+        if (intrset == 2) { intrset = 0; doirqnext = 0; return 1; }
+        R.esi -= 1; return 1;
+    case 0x44: case 0x54: {
+        int up = (op == 0x54);
+        set_ax(rd16h(PC())); xdb = (xdb & ~0xFFu) | (u8)R.eax; set_bl(R.eax >> 8);
+        set_cx(xx);
+        zs_mcall(memtabler8[R.ebx]);
+        set_bl(xdb); set_cx(xy);
+        zs_mcall(memtablew8[R.ebx]);
+        if (DL & 0x10) {
+            if (up) { XX8++; XY8++; } else { XX8--; XY8--; }
+        } else {
+            if (up) { XX16++; XY16++; } else { XX16--; XY16--; }
+        }
+        XA16--;
+        if (XA16 == 0xFFFF) R.esi += 2; else R.esi -= 1;
+        return 1;
+    }
     /* ---- stack ---- */
     case 0x48: if (m8) push8(XA8); else push16(((u8 *)&xa)[1], XA8); return 1;
     case 0xDA: if (x8) push8(XX8); else push16(((u8 *)&xx)[1], XX8); return 1;
@@ -600,6 +902,8 @@ static int handles(u32 op, int *alu_dec_sensitive)
     case 0x10: case 0x30: case 0x50: case 0x70: case 0x90: case 0xB0: case 0xD0: case 0xF0: case 0x80:
     case 0x48: case 0xDA: case 0x5A: case 0x0B: case 0x4B: case 0x8B: case 0x08:
     case 0x68: case 0x7A: case 0xFA: case 0xAB: case 0x2B:
+    case 0x4C: case 0x5C: case 0x6C: case 0x7C: case 0xDC: case 0x20: case 0x22: case 0xFC: case 0x60: case 0x6B: case 0x82:
+    case 0x62: case 0xF4: case 0xD4: case 0x28: case 0xC2: case 0xE2: case 0xFB: case 0x00: case 0x02: case 0x40: case 0xCB: case 0x44: case 0x54:
         return 1;
     }
     return 0;
@@ -650,6 +954,7 @@ static u32 frnd(void) { frng ^= frng << 13; frng ^= frng >> 17; frng ^= frng << 
 static const vreg_t vars[] = {
     { &xa, 4, "xa" }, { &xx, 4, "xx" }, { &xy, 4, "xy" }, { &xs, 4, "xs" }, { &xd, 4, "xd" }, { &xdb, 4, "xdb" }, { &xpb, 4, "xpb" },
     { &xpc, 2, "xpc" }, { &xe, 1, "xe" }, { &xp, 1, "xp" }, { &flagnz, 4, "flagnz" }, { &flago, 4, "flago" }, { &flagc, 4, "flagc" },
+    { &initaddrl, 4, "initaddrl" }, { &curexecstate, 1, "curexecstate" }, { &nmistatus, 1, "nmistatus" }, { &curnmi, 1, "curnmi" },
     { &stackand, 2, "stackand" }, { &stackor, 2, "stackor" }, { &DPageR8, 4, "DPageR8" }, { &DPageR16, 4, "DPageR16" },
     { &DPageW8, 4, "DPageW8" }, { &DPageW16, 4, "DPageW16" }, { &intrset, 1, "intrset" }, { &doirqnext, 1, "doirqnext" },
 };
@@ -690,6 +995,55 @@ static void fuzz_setup(u32 op, u8 *code)
     /* long operand banks */
     { static const u8 lb[] = { 0x7E, 0x7F, 0xC0, 0xFF }; code[2] = lb[frnd() % sizeof lb]; }
     if (op == 0x5C || op == 0x22) code[2] = 0x7E;
+
+    /* ---- control-flow ops need a consistent PC mapping and valid banks ---- */
+    {
+        static const u8 vb[] = { 0x00, 0x01, 0x02, 0x03, 0x7E, 0x7F, 0x80, 0xC0 };
+        static const u8 mb[] = { 0x7E, 0x7F, 0xC0, 0xC1 };
+        int ctlop = 0;
+        switch (op) {
+        case 0x4C: case 0x5C: case 0x6C: case 0x7C: case 0xDC: case 0x20: case 0x22: case 0xFC: case 0x60: case 0x6B: case 0x82:
+        case 0x62: case 0xF4: case 0xD4: case 0x28: case 0xC2: case 0xE2: case 0xFB: case 0x00: case 0x02: case 0x40: case 0xCB: case 0x44: case 0x54:
+            ctlop = 1;
+        }
+        if (ctlop) {
+            u32 pcv = 0x8000 | (frnd() & 0x7FF0);
+            xpb = vb[frnd() % sizeof vb];
+            xpc = (u16)pcv;
+            initaddrl = (u32)code - pcv;
+            if (frnd() % 3 == 0) { xs = 0x100 + frnd() % 0x1400; if (emul) xs = 0x100 | (frnd() % 0xF0); }
+            else if (xs > 0x1500) xs = 0x100 + frnd() % 0x1400;
+            if (emul) xs = 0x100 | (xs & 0xFF) % 0xF0;
+            xirqb = vb[frnd() % sizeof vb];
+            brkv = 0x8000 | frnd(); brkv8 = 0x8000 | frnd(); copv = 0x8000 | frnd(); copv8 = 0x8000 | frnd();
+            nmistatus = frnd() % 4; curexecstate = frnd() % 4; curnmi = (u8)frnd(); intrset = frnd() % 4; doirqnext = (u8)frnd();
+            switch (op) {
+            case 0x4C: case 0x20: case 0x5C: case 0x22:
+                if (frnd() % 4) code[1] |= 0x80; code[2] = vb[frnd() % sizeof vb]; break;
+            case 0x6C: case 0xDC:
+                { u32 a = (frnd() & 1) ? 0x100 + frnd() % 0x1E00 : 0x8000 + frnd() % 0x6000; code[0] = (u8)a; code[1] = (u8)(a >> 8); }
+                break;
+            case 0x7C: case 0xFC:
+                { u32 a = 0x8000 + frnd() % 0x6000; code[0] = (u8)a; code[1] = (u8)(a >> 8); }
+                break;
+            case 0x44: case 0x54:
+                code[0] = mb[frnd() % sizeof mb]; code[1] = mb[frnd() % sizeof mb];
+                if (frnd() % 4 == 0) xa = frnd() % 3 ? 0 : 0xFFFF;
+                break;
+            }
+            /* stack contents for the pulling ops (bank slots hold valid banks) */
+            {
+                u8 *w = (u8 *)wramdata;
+                int k;
+                for (k = 1; k <= 6; k++) {
+                    u32 a = ((u32)xs + k) & stackand;
+                    if (a < 0x2000) w[a] = (u8)frnd();
+                }
+                if (op == 0x6B) { u32 a = ((u32)xs + 3) & stackand; if (a < 0x2000) w[a] = vb[frnd() % sizeof vb]; }
+                if (op == 0x40 && !emul) { u32 a = ((u32)xs + 4) & stackand; if (a < 0x2000) w[a] = vb[frnd() % sizeof vb]; }
+            }
+        }
+    }
     update_dpage();
     if (longptr) {
         u8 *w = (u8 *)wramdata;
@@ -708,9 +1062,11 @@ unsigned zs_cpu_fuzz(unsigned iters, unsigned seed)
     u8 *code = codebuf + 512;
     unsigned it, bad = 0, ran = 0;
     unsigned long perop[256] = { 0 };
+    void *saveb[256], *savec[256];
     int v;
     struct sigaction sa;
     frng = seed ? seed : 1;
+    { int q; for (q = 0; q < 256; q++) { saveb[q] = tableadb[q]; savec[q] = tableadc[q]; tableadb[q] = zs_capture_tab; tableadc[q] = zs_capture_tab; } }
     for (v = 0; v < NVARS; v++) { snapv[v] = malloc(vars[v].n); asmv[v] = malloc(vars[v].n); }
     for (it = 0; it < iters; it++) {
         u32 op;
@@ -751,6 +1107,7 @@ unsigned zs_cpu_fuzz(unsigned iters, unsigned seed)
     {
         int n = 0, mn = 1 << 30, op;
         for (op = 0; op < 256; op++) if (zs_cpu_ported[op]) { n++; if (perop[op] < (unsigned long)mn) mn = (int)perop[op]; }
+        { int q; for (q = 0; q < 256; q++) { tableadb[q] = saveb[q]; tableadc[q] = savec[q]; } }
         fprintf(stderr, "cpu fuzz: %u cases over %d ported opcodes (min %d per opcode), %u mismatching\n", ran, n, mn, bad);
     }
     return bad;
