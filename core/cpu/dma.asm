@@ -40,6 +40,25 @@ section .bss
 NEWSYM AddrNoIncr, resb 1
 section .text
 
+%ifdef __LIBRETRO__
+EXTSYM zs_transdma_c
+; C port: same register contract as the original (everything but ebx/ecx/edx/edi preserved; we keep all)
+EXTSYM zs_dma_use_asm
+NEWSYM transdma
+    cmp dword[zs_dma_use_asm],0
+    jne transdma_asm
+    pushad
+    push esi
+    call zs_transdma_c
+    add esp,4
+    popad
+    ret
+%else
+NEWSYM transdma
+    jmp transdma_asm
+%endif
+
+
 %macro ExecSPCCycles 0
     xor ebx,ebx
     mov bx,[esi+5]
@@ -55,7 +74,7 @@ section .text
 .nocycles
 %endmacro
 
-NEWSYM transdma
+NEWSYM transdma_asm
     push eax
     cmp word[esi+5],480h
     jne .no
@@ -65,7 +84,7 @@ NEWSYM transdma
 
     mov al,[esi]
     test al,80h
-    jnz near transdmappu2cpu
+    jnz near transdmappu2cpu_asm
 
     ; set address increment value
     mov dword[.addrincr],0
@@ -234,7 +253,7 @@ ALIGN32
 .cebx      dd 0
 section .text
 
-NEWSYM transdmappu2cpu
+NEWSYM transdmappu2cpu_asm
     ; set address increment value
     mov dword[.addrincr],0
     test al,00001000b
