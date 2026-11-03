@@ -66,7 +66,9 @@ char *zl_strdup(const char *s) { size_t n = strlen(s) + 1; char *d = zl_malloc((
 int zl_putchar(int c) { return putchar(c); }
 int zl_getchar(void) { return -1; }
 
+__attribute__((weak)) void zs_fatal(void) {}   /* platform layer: leave the guest and keep the frontend alive */
 static u32 ring[64]; static unsigned ringi;
+static const char *oname(u32 pc) { u32 o = pc >> 21; return o < 128 && lift_objname[o] ? lift_objname[o] : "?"; }
 static void die(const char *fmt, ...) __attribute__((noreturn));
 #include <stdarg.h>
 static void die(const char *fmt, ...)
@@ -77,14 +79,15 @@ static void die(const char *fmt, ...)
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
     va_end(ap);
-    { unsigned i; fprintf(stderr, "recent entries (old->new):\n"); for (i = 0; i < 64; i++) { u32 p = ring[(ringi + i) & 63]; fprintf(stderr, "  %08x %s+0x%x\n", p, lift_objname[p >> 21] ? lift_objname[p >> 21] : "?", p & 0x1FFFFF); } }
+    { unsigned i; fprintf(stderr, "recent entries (old->new):\n"); for (i = 0; i < 64; i++) { u32 p = ring[(ringi + i) & 63]; fprintf(stderr, "  %08x %s+0x%x\n", p, oname(p), p & 0x1FFFFF); } }
     fprintf(stderr, "esp=%08x eax=%08x ebx=%08x ecx=%08x edx=%08x esi=%08x edi=%08x ebp=%08x\n", LG.esp, LG.eax, LG.ebx, LG.ecx, LG.edx, LG.esi, LG.edi, LG.ebp);
+    zs_fatal();
     abort();
 }
 
-u32 lift_missing(u32 id) { die("call to unresolved/skipped code 0x%x (%s)", id, lift_objname[id >> 21] ? lift_objname[id >> 21] : "?"); }
-void lift_trap(const char *what, u32 pc) { die("trap: %s at %s+0x%x", what, lift_objname[pc >> 21] ? lift_objname[pc >> 21] : "?", pc & 0x1FFFFF); }
-void lift_bad(u32 pc) { die("bad dispatch target 0x%x (%s+0x%x)", pc, lift_objname[pc >> 21] ? lift_objname[pc >> 21] : "?", pc & 0x1FFFFF); }
+u32 lift_missing(u32 id) { die("call to unresolved/skipped code 0x%x (%s)", id, oname(id)); }
+void lift_trap(const char *what, u32 pc) { die("trap: %s at %s+0x%x", what, oname(pc), pc & 0x1FFFFF); }
+void lift_bad(u32 pc) { die("bad dispatch target 0x%x (%s+0x%x)", pc, oname(pc), pc & 0x1FFFFF); }
 
 typedef u32 (*ext8_t)(uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t);
 static u32 ext_invoke(u32 id, const u32 *a)
@@ -110,7 +113,7 @@ u32 lift_run(u32 pc)
             continue;
         }
         ring[ringi++ & 63] = pc;
-        if (o >= 128 || !lift_objtab[o]) die("dispatch into non-lifted code 0x%x (%s+0x%x)", pc, lift_objname[o] ? lift_objname[o] : "?", pc & 0x1FFFFF);
+        if (o >= 128 || !lift_objtab[o]) die("dispatch into non-lifted code 0x%x (%s+0x%x)", pc, oname(pc), pc & 0x1FFFFF);
         ring[ringi++ & 63] = pc;
         pc = lift_objtab[o](pc);
     }

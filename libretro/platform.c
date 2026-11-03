@@ -77,7 +77,7 @@ uint16_t zs_pad[2];  /* RETRO_DEVICE_ID_JOYPAD_* bitmask per port */
 
 static ucontext_t main_ctx, emu_ctx;
 static char *emu_stack;
-static int emu_started, emu_dead;
+static int emu_started, emu_dead, emu_running;
 
 #define EMU_STACK_SIZE (8 * 1024 * 1024)
 
@@ -153,7 +153,9 @@ int zs_run_frame(void)
 {
     if (!emu_started || emu_dead) return 0;
     poll_input();
+    emu_running = 1;
     swapcontext(&main_ctx, &emu_ctx);
+    emu_running = 0;
 #ifdef LIFTED
     lift_baseline();   /* no-op after the first frame */
 #endif
@@ -165,6 +167,14 @@ void zs_stop(void)
     free(emu_stack);
     emu_stack = NULL;
     emu_started = 0;
+}
+
+/* A fatal error inside the guest (unsupported/self-modifying code, bad jump ...): stop emulating, keep the frontend alive. */
+void zs_fatal(void)
+{
+    if (!emu_running) return;          /* not inside the coroutine: caller aborts */
+    emu_dead = 1;
+    for (;;) swapcontext(&emu_ctx, &main_ctx);
 }
 
 /* Called by the asm (Check60hz) when it wants to sleep until the next tick. */

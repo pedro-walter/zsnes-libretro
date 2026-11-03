@@ -75,7 +75,7 @@ static void wav_header(FILE *f, uint32_t bytes) {
     fwrite("data", 1, 4, f); fwrite(&bytes, 4, 1, f);
 }
 
-static int statef = 0, statelen = 120;
+static int statef = 0, statelen = 120, wramcrc = 0;
 static int resetf = -1, fuzz = 0, dspfuzz = 0, dspwfuzz = 0, cpufuzz = 0, hdmafuzz = 0, schedfuzz = 0, regwfuzz = 0;
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: %s core.so rom [-f N] [-s a,b] [-o prefix] [-w wav] [-i f:mask,...]\n", argv[0]); return 2; }
@@ -96,6 +96,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "-H")) hdmafuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-I")) schedfuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-R")) regwfuzz = atoi(argv[i+1]);
+        else if (!strcmp(argv[i], "-M")) wramcrc = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-X")) statef = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-Y")) statelen = atoi(argv[i+1]);
     }
@@ -125,7 +126,9 @@ int main(int argc, char **argv) {
             fprintf(tf, "\n"); }
         const char *s = shots; while (*s) { int fr, n = 0; if (sscanf(s, "%d%n", &fr, &n) >= 1) { if (fr == f) {
             char path[512]; snprintf(path, sizeof path, "%s_%04d.png", prefix, f); write_png(path);
-            uint32_t c = last_rgb ? crc32(0, last_rgb, lw * lh * 3) : 0; printf("frame %d: %ux%u crc %08x -> %s\n", f, lw, lh, c, path); } }
+            uint32_t c = last_rgb ? crc32(0, last_rgb, lw * lh * 3) : 0; printf("frame %d: %ux%u crc %08x -> %s", f, lw, lh, c, path);
+            if (wramcrc) { uint8_t *ram = retro_get_memory_data_p(RETRO_MEMORY_SYSTEM_RAM); printf(" wram %08x", (unsigned)crc32(0, ram, 131072)); }
+            printf("\n"); } }
             s += n ? n : 1; if (*s == ',') s++; }
     }
     if (statef) {   /* save-state round trip: run N frames, save, run M frames (record CRCs), load, run M frames again, compare */
