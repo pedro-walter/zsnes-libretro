@@ -9,7 +9,7 @@ EXT_OBJ = 0x7F                  # pseudo object holding foreign (C) functions
 SENT_OBJ = 0x7E                 # return-to-C sentinel
 ARENA_BASE = 0x30000000
 ARENA_SIZE = 0x10000000
-DATA_BASE = ARENA_BASE + 0x10000
+DATA_BASE = ARENA_BASE + 0x4000000   # static data sits ABOVE the malloc heap, like the .so/exe layout of the original (see README)
 
 def align(x, a):
     a = max(a, 1)

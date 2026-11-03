@@ -91,6 +91,11 @@ static void trace_state(void)
     MIX(NMIEnab); MIX(curnmi); MIX(ppustatus); MIX(cfield); MIX(spc700idle);
     MIX(R.ebp - (u32)spcRam);
     fwrite(&h, 4, 1, trace);
+    {   static FILE *tt; static int ti;
+        if (!ti) { ti = 1; if (getenv("ZS_SCHED_TRACE_TXT")) tt = fopen(getenv("ZS_SCHED_TRACE_TXT"), "w"); }
+        if (tt) fprintf(tt, "y=%u edx=%08x pc=%x ebp=%x ie=%x ir=%x irqon=%x dirq=%x ces=%x nr=%x ns=%x npl=%x hd=%x cpb=%x nsv=%x\n", curypos, R.edx, R.esi - initaddrl, R.ebp - (u32)spcRam,
+                          INTEnab, intrset, irqon, doirqnext, curexecstate, nmirept, nmistatus, nmiprevline, hdmadelay, cycpbl, numspcvblleft);
+    }
 }
 
 /* ProcessIRQStuff: returns 1 when execution must go to .virq */

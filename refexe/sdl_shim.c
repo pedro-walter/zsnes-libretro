@@ -35,11 +35,18 @@ SDL_Surface *SDL_SetVideoMode(int w, int h, int bpp, Uint32 flags)
     fprintf(stderr, "[shim] video mode %dx%d\n", w, h);
     return &surf;
 }
+static unsigned crc_wram(void)
+{
+    static unsigned t[256]; static int init; unsigned c = 0xFFFFFFFFu; int i, k;
+    if (!init) { for (i = 0; i < 256; i++) { unsigned r = i; for (k = 0; k < 8; k++) r = (r & 1) ? (r >> 1) ^ 0xEDB88320u : r >> 1; t[i] = r; } init = 1; }
+    for (i = 0; i < 131072; i++) c = t[(c ^ wramdataa[i]) & 0xFF] ^ (c >> 8);
+    return ~c;
+}
 int SDL_Flip(SDL_Surface *s)
 {
     if (trace) {
         flips++;
-        fprintf(trace, "%ld %x=%x %x=%x %x=%x\n", flips,
+        fprintf(trace, "%ld w=%08x %x=%x %x=%x %x=%x\n", flips, crc_wram(),
                 0x1e62, wramdataa[0x1e62] | wramdataa[0x1e63] << 8,
                 0x1ff6, wramdataa[0x1ff6] | wramdataa[0x1ff7] << 8,
                 0x1ffc, wramdataa[0x1ffc] | wramdataa[0x1ffd] << 8);

@@ -277,9 +277,33 @@ static u32 sched_c(void)
 
 
 /* tail-style override of the asm label "cpuover": the old cpuover_sh shim, expressed as a jump to the continuation */
+extern u8 spcRam[];
+static FILE *strace, *strace_txt; static int strace_init;
+static void sched_trace(void)
+{
+    u32 h = 2166136261u;
+    if (!strace_init) {
+        strace_init = 1;
+        if (getenv("ZL_SCHED_TRACE")) strace = fopen(getenv("ZL_SCHED_TRACE"), "wb");
+        if (getenv("ZL_SCHED_TRACE_TXT")) strace_txt = fopen(getenv("ZL_SCHED_TRACE_TXT"), "w");
+    }
+    if (!strace && !strace_txt) return;
+#define MIX(v) do { h ^= (u32)(v); h *= 16777619u; } while (0)
+    MIX(R.edx); MIX(R.esi - initaddrl); MIX(curypos); MIX(INTEnab); MIX(intrset); MIX(irqon);
+    MIX(doirqnext); MIX(curexecstate); MIX(nmirept); MIX(nmistatus); MIX(nmiprevline);
+    MIX(hdmadelay); MIX(cycpbl); MIX(KeyOnStA); MIX(KeyOnStB); MIX(numspcvblleft);
+    MIX(NMIEnab); MIX(curnmi); MIX(ppustatus); MIX(cfield); MIX(spc700idle);
+    MIX(R.ebp - (u32)(uintptr_t)spcRam);
+    if (strace) fwrite(&h, 4, 1, strace);
+    if (strace_txt) fprintf(strace_txt, "y=%u edx=%08x pc=%x ebp=%x ie=%x ir=%x irqon=%x dirq=%x ces=%x nr=%x ns=%x npl=%x hd=%x cpb=%x nsv=%x\n", curypos, R.edx, R.esi - initaddrl, R.ebp - (u32)(uintptr_t)spcRam,
+                                  INTEnab, intrset, irqon, doirqnext, curexecstate, nmirept, nmistatus, nmiprevline, hdmadelay, cycpbl, numspcvblleft);
+}
+
 u32 zl_cpuover(void)
 {
-    u32 code = sched_c();
+    u32 code;
+    sched_trace();
+    code = sched_c();
     if (code == S_ASM) { LG.eax = code; lift_once = 1; return ZID_cpuover; }
     LG.ebx = 0;
     switch (code) {

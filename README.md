@@ -38,7 +38,9 @@ under `wine`.  All platforms are built with `-ffp-contract=off` (FMA contraction
   flag-liveness analysis, `call`/`ret` use an emulated stack, code addresses are ids `(object+1)<<21 | offset`,
   jump tables and function pointers in data hold those ids. MMX/x87 are emulated in `lift_mmx.h`/`lift.h`.
 * Guest memory is a fixed-address arena (`0x30000000`, 256 MB, `lift_rt.c`) so guest 32-bit addresses *are* host
-  pointers; the C that talks to the asm (initc.c, platform.c ...) is rewritten by `cfix.py` so its shared variables
+  pointers (the guest heap -- ROM, caches -- sits *below* the static data at `+0x4000000`: the asm's NMI speed hack compares
+  host pointers across regions, so the ordering has to match the native build; with the opposite order Yoshi's Island
+  diverged from the reference after ~440 frames); the C that talks to the asm (initc.c, platform.c ...) is rewritten by `cfix.py` so its shared variables
   live at the arena addresses (asm data symbols are absolute linker symbols from `lift_syms.ld`). Heap blocks the
   guest sees are allocated from the arena (`zl_malloc`).
 * `make -f Makefile.lift itest` runs every distinct instruction encoding found in the program (8288) on 24 random

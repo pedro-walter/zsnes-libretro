@@ -216,7 +216,7 @@ def main():
     for k, v in unsup.most_common(40): print('   ', k, v, file=sys.stderr)
 
     # ---- data image ----
-    img = bytearray(P.data_end - objs.ARENA_BASE)
+    img = bytearray(P.data_end - objs.DATA_BASE)
     for o in P.objs:
         d = bytearray(o.data)
         for off, symidx, typ in o.rel_data:
@@ -231,19 +231,19 @@ def main():
                 pass   # branch inside data-resident code
             else:
                 raise Exception('data reloc type %d' % typ)
-        img[o.data_addr - objs.ARENA_BASE:o.data_addr - objs.ARENA_BASE + len(d)] = d
+        img[o.data_addr - objs.DATA_BASE:o.data_addr - objs.DATA_BASE + len(d)] = d
     for n, a in P.foreign_vars.items():
         if n in P.cvar_init:
             b = P.cvar_init[n]
-            if a - objs.ARENA_BASE + len(b) > len(img): img.extend(bytes(a - objs.ARENA_BASE + len(b) - len(img)))
-            img[a - objs.ARENA_BASE:a - objs.ARENA_BASE + len(b)] = b
+            if a - objs.DATA_BASE + len(b) > len(img): img.extend(bytes(a - objs.DATA_BASE + len(b) - len(img)))
+            img[a - objs.DATA_BASE:a - objs.DATA_BASE + len(b)] = b
     # final size may have grown by foreign vars (resolved during codegen) -> re-pad
-    if len(img) < P.data_end - objs.ARENA_BASE: img.extend(bytes(P.data_end - objs.ARENA_BASE - len(img)))
+    if len(img) < P.data_end - objs.DATA_BASE: img.extend(bytes(P.data_end - objs.DATA_BASE - len(img)))
     open(os.path.join(outdir, 'lift_data.bin'), 'wb').write(bytes(img))
 
     # ---- headers / tables ----
     with open(os.path.join(outdir, 'lift_syms.h'), 'w') as f:
-        f.write('/* generated */\n#define LIFT_DATA_END 0x%x\n#define LIFT_ARENA_BASE 0x%xu\n#define LIFT_ARENA_SIZE 0x%xu\n' % (P.data_end, objs.ARENA_BASE, objs.ARENA_SIZE))
+        f.write('/* generated */\n#define LIFT_DATA_END 0x%x\n#define LIFT_DATA_BASE 0x%xu\n#define LIFT_ARENA_BASE 0x%xu\n#define LIFT_ARENA_SIZE 0x%xu\n' % (P.data_end, objs.DATA_BASE, objs.ARENA_BASE, objs.ARENA_SIZE))
         for name, a in sorted(list(P.gdata.items()) + list(P.ldata.items())): f.write('#define ZO_%s 0x%xu\n' % (name, a))
         for name, a in sorted(P.foreign_vars.items()): f.write('#define ZO_%s 0x%xu\n' % (name, a))
         for name, (oi, off) in sorted(P.gtext.items()):

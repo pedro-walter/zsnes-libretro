@@ -91,7 +91,7 @@ static void wav_header(FILE *f, uint32_t bytes) {
     fwrite("data", 1, 4, f); fwrite(&bytes, 4, 1, f);
 }
 
-static int statef = 0, statelen = 120, wramcrc = 0;
+static int statef = 0, statelen = 120, wramcrc = 0, dumpf = 0; static const char *dumppath = "wram.bin";
 static int resetf = -1, fuzz = 0, dspfuzz = 0, dspwfuzz = 0, cpufuzz = 0, hdmafuzz = 0, schedfuzz = 0, regwfuzz = 0;
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: %s core.so rom [-f N] [-s a,b] [-o prefix] [-w wav] [-i f:mask,...]\n", argv[0]); return 2; }
@@ -114,6 +114,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "-I")) schedfuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-R")) regwfuzz = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-M")) wramcrc = atoi(argv[i+1]);
+        else if (!strcmp(argv[i], "-Z")) { dumpf = atoi(argv[i+1]); if (i + 2 < argc && argv[i+2][0] != '-') dumppath = argv[i+2]; }
         else if (!strcmp(argv[i], "-X")) statef = atoi(argv[i+1]);
         else if (!strcmp(argv[i], "-Y")) statelen = atoi(argv[i+1]);
     }
@@ -138,6 +139,7 @@ int main(int argc, char **argv) {
         const char *p = inputs; while (*p) { int fr, m, n = 0; if (sscanf(p, "%d:%i%n", &fr, &m, &n) >= 2 && fr == f) cur_mask = m; p += n ? n : 1; if (*p == ',') p++; }
         if (f == resetf) retro_reset_p();
         retro_run_p();
+        if (dumpf == f) { FILE *df = fopen(dumppath, "wb"); if (df) { fwrite(retro_get_memory_data_p(RETRO_MEMORY_SYSTEM_RAM), 1, 131072, df); fclose(df); } }
         if (tf) { /* "addr:bytes,..." hex addr into 128K WRAM; bytes 1 or 2 (little endian) */
             uint8_t *ram = retro_get_memory_data_p(RETRO_MEMORY_SYSTEM_RAM); fprintf(tf, "%d", f);
             const char *t = trace; while (*t) { unsigned a, n, k = 0; if (sscanf(t, "%x:%u%n", &a, &n, &k) >= 2) { unsigned v = ram[a]; if (n == 2) v |= ram[a+1] << 8; fprintf(tf, " %x=%x", a, v); } t += k ? k : 1; if (*t == ',') t++; }

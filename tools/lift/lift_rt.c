@@ -43,9 +43,9 @@ int lift_init(void)
         fprintf(stderr, "lift: cannot map guest arena at 0x%x\n", LIFT_ARENA_BASE);
         return 0;
     }
-    memcpy(p, lift_data_bin, lift_data_bin_len);
-    heap_ptr = (LIFT_DATA_END + 0xFFFFu) & ~0xFFFFu;
-    heap_end = LIFT_ARENA_BASE + LIFT_ARENA_SIZE - STACK_SIZE;
+    memcpy((void *)(uintptr_t)LIFT_DATA_BASE, lift_data_bin, lift_data_bin_len);
+    heap_ptr = LIFT_ARENA_BASE + 0x10000u;                 /* guest malloc: below the static data (ROM, caches < WRAM, as in the original's native layout) */
+    heap_end = LIFT_DATA_BASE;
     memset(&LG, 0, sizeof LG);
     LG.esp = LIFT_ARENA_BASE + LIFT_ARENA_SIZE - 256;
     inited = 1;
@@ -149,33 +149,45 @@ static void dual_summary(void)
     if (dual_rate <= 0) return;
     for (k = 0; k < lift_ovr_count; k++) if (dual_calls[k]) fprintf(stderr, "DUAL %-28s checked %lu  mismatching %lu\n", lift_ovr_names[k], dual_calls[k], dual_diffs[k]);
 }
+/* The guest arena has two live regions: the malloc heap [ARENA_BASE, heap_ptr) and the static data [LIFT_DATA_BASE, LIFT_DATA_END)
+ * (data above heap, like the native layout the pointer-ordering dependent asm expects).  A "snapshot" is heap | data | top of stack. */
+static u32 sn_hu, sn_dl, sn_tot;
+static void sn_size(void) { sn_hu = (heap_ptr - LIFT_ARENA_BASE + 15u) & ~15u; sn_dl = (LIFT_DATA_END - LIFT_DATA_BASE + 15u) & ~15u; sn_tot = sn_hu + sn_dl; }
+static inline u32 sn_addr(u32 i) { return i < sn_hu ? LIFT_ARENA_BASE + i : LIFT_DATA_BASE + (i - sn_hu); }
+static inline u8 sn_cur(u32 i) { return *(volatile u8 *)(uintptr_t)sn_addr(i); }
 static u32 prot_lo, prot_hi;     /* the emulator's own C stack lives in the arena: never restore or compare it */
 void zl_dual_protect(void *p, unsigned long n) { prot_lo = (u32)(uintptr_t)p; prot_hi = prot_lo + (u32)n; }
-static void dual_restore(u8 *arena, const u8 *src, u32 used)
+static void dual_restore(u8 *arena, const u8 *src)
 {
     u32 lo = prot_lo > LIFT_ARENA_BASE ? prot_lo - LIFT_ARENA_BASE : 0, hi = prot_hi > LIFT_ARENA_BASE ? prot_hi - LIFT_ARENA_BASE : 0;
-    if (hi > used) hi = used;
-    if (lo >= hi) { memcpy(arena, src, used); return; }
-    memcpy(arena, src, lo); memcpy(arena + hi, src + hi, used - hi);
+    if (hi > sn_hu) hi = sn_hu;
+    if (lo >= hi) memcpy(arena, src, sn_hu);
+    else { memcpy(arena, src, lo); memcpy(arena + hi, src + hi, sn_hu - hi); }
+    memcpy((void *)(uintptr_t)LIFT_DATA_BASE, src + sn_hu, sn_dl);
+}
+static void snap_get(u8 *dst, u8 *arena, u8 *stk)
+{
+    memcpy(dst, arena, sn_hu); memcpy(dst + sn_hu, (void *)(uintptr_t)LIFT_DATA_BASE, sn_dl); memcpy(dst + sn_tot, stk, DSTK);
 }
 static int ignored(u32 a) { if (a >= prot_lo && a < prot_hi) return 1; int i; for (i = 0; i < ndual_ign; i++) if (a >= dual_ign[i].lo && a < dual_ign[i].hi) return 1; return 0; }
 static int dual_busy;
 static void dual_run(u32 k)
 {
     dual_busy = 1;
-    u32 used = (heap_ptr - LIFT_ARENA_BASE + 15u) & ~15u, i, ndiff = 0;
-    size_t need = (size_t)used + DSTK;
+    u32 used, i, ndiff = 0;
+    size_t need;
     u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE, *stk = arena + LIFT_ARENA_SIZE - DSTK;
     lift_state_t lg0 = LG, lgA; double fp0[8]; int fptop0 = lift_fptop;
     u32 real = M32(LG.esp), slot = LG.esp;
+    sn_size(); used = sn_tot; need = (size_t)used + DSTK;
     if (need > dsnapcap) { free(dsnapA); free(dsnap0); dsnapcap = need + (4u << 20); dsnapA = malloc(dsnapcap); dsnap0 = malloc(dsnapcap); if (!dsnapA || !dsnap0) die("dual: out of memory (%zu)", dsnapcap); }
     memcpy(fp0, lift_fp, sizeof fp0);
     if (getenv("ZL_DUAL_DBG")) fprintf(stderr, "dual %s used=%u cap=%zu d0=%p dA=%p\n", lift_ovr_names[k], used, dsnapcap, (void*)dsnap0, (void*)dsnapA);
-    memcpy(dsnap0, arena, used); memcpy(dsnap0 + used, stk, DSTK);
+    snap_get(dsnap0, arena, stk);
     lift_ovr_fns[k](); LG.esp += 4;          /* the override acts as the function's ret */
     lgA = LG;
-    memcpy(dsnapA, arena, used); memcpy(dsnapA + used, stk, DSTK);
-    dual_restore(arena, dsnap0, used); memcpy(stk, dsnap0 + used, DSTK);
+    snap_get(dsnapA, arena, stk);
+    dual_restore(arena, dsnap0); memcpy(stk, dsnap0 + used, DSTK);
     LG = lg0; memcpy(lift_fp, fp0, sizeof fp0); lift_fptop = fptop0;
     M32(slot) = SENT_ID;
     lift_orig++; lift_run(lift_ovr_ids[k]); lift_orig--;
@@ -189,10 +201,10 @@ static void dual_run(u32 k)
           if (m & 16) { CR(esi) } if (m & 32) { CR(edi) } if (m & 64) { CR(ebp) } }
         CR(esp)
         for (i = 0; i < used; i++) {
-            if (dsnapA[i] != arena[i] && !ignored(LIFT_ARENA_BASE + i)) {
+            if (dsnapA[i] != sn_cur(i) && !ignored(sn_addr(i))) {
                 if (ndiff < 8 && dual_reports < dual_max) {
-                    u32 off; const char *n = symname(LIFT_ARENA_BASE + i, &off);
-                    fprintf(stderr, "DUAL %s: %08x (%s+0x%x) C=%02x orig=%02x\n", lift_ovr_names[k], LIFT_ARENA_BASE + i, n, off, dsnapA[i], arena[i]);
+                    u32 off; const char *n = symname(sn_addr(i), &off);
+                    fprintf(stderr, "DUAL %s: %08x (%s+0x%x) C=%02x orig=%02x\n", lift_ovr_names[k], sn_addr(i), n, off, dsnapA[i], sn_cur(i));
                 }
                 ndiff++;
             }
@@ -238,19 +250,20 @@ static void dual_tail(u32 k)
     u32 oid = lift_ovr_ids[k] ? lift_ovr_ids[k] : ((zl_tail_orig ? zl_tail_orig(k) : 0) ? zl_tail_orig(k) : (zl_sa1_orig ? zl_sa1_orig(k) : 0));
     if (!oid) return;
     dual_busy = 1;
-    u32 used = (heap_ptr - LIFT_ARENA_BASE + 15u) & ~15u, i, ndiff = 0;
-    size_t need = (size_t)used + DSTK;
+    u32 used, i, ndiff = 0;
+    size_t need;
     u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE, *stk = arena + LIFT_ARENA_SIZE - DSTK;
     lift_state_t lg0 = LG, lgA; double fp0[8]; int fptop0 = lift_fptop;
     u32 real = M32(LG.esp), slot = LG.esp;
+    sn_size(); used = sn_tot; need = (size_t)used + DSTK;
     if (need > dsnapcap) { free(dsnapA); free(dsnap0); dsnapcap = need + (4u << 20); dsnapA = malloc(dsnapcap); dsnap0 = malloc(dsnapcap); if (!dsnapA || !dsnap0) die("dual: out of memory (%zu)", dsnapcap); }
     memcpy(fp0, lift_fp, sizeof fp0);
-    memcpy(dsnap0, arena, used); memcpy(dsnap0 + used, stk, DSTK);
+    snap_get(dsnap0, arena, stk);
     LG.edx &= 0xFFFF00FFu;                       /* dh = 0: one opcode, then the endloop returns */
     { u32 nx = lift_ovr_fns[k](); if (nx) { LG.esp = lg0.esp; goto skip; } }
     LG.esp += 4; lgA = LG;
-    memcpy(dsnapA, arena, used); memcpy(dsnapA + used, stk, DSTK);
-    dual_restore(arena, dsnap0, used); memcpy(stk, dsnap0 + used, DSTK);
+    snap_get(dsnapA, arena, stk);
+    dual_restore(arena, dsnap0); memcpy(stk, dsnap0 + used, DSTK);
     LG = lg0; LG.edx &= 0xFFFF00FFu; memcpy(lift_fp, fp0, sizeof fp0); lift_fptop = fptop0;
     M32(slot) = SENT_ID;
     lift_orig++; lift_run(oid); lift_orig--;
@@ -261,8 +274,8 @@ static void dual_tail(u32 k)
         { static int all = -1; if (all < 0) all = getenv("ZL_DUALT_ALL") != NULL;   /* eax/ecx/ebx high bits are scratch between opcodes */
           if (all) { CRT(eax) CRT(ecx) } lgA.ebx &= 0xFF; LG.ebx &= 0xFF; CRT(edx) CRT(ebx) CRT(esi) CRT(edi) CRT(ebp) CRT(esp) }
         for (i = 0; i < used; i++)
-            if (dsnapA[i] != arena[i] && !ignored(LIFT_ARENA_BASE + i)) {
-                if (ndiff < 8 && dualt_reports < dual_max) { u32 off; const char *n = symname(LIFT_ARENA_BASE + i, &off); fprintf(stderr, "DUALT %s: %08x (%s+0x%x) C=%02x orig=%02x\n", lift_ovr_cnames[k], LIFT_ARENA_BASE + i, n, off, dsnapA[i], arena[i]); }
+            if (dsnapA[i] != sn_cur(i) && !ignored(sn_addr(i))) {
+                if (ndiff < 8 && dualt_reports < dual_max) { u32 off; const char *n = symname(sn_addr(i), &off); fprintf(stderr, "DUALT %s: %08x (%s+0x%x) C=%02x orig=%02x\n", lift_ovr_cnames[k], sn_addr(i), n, off, dsnapA[i], sn_cur(i)); }
                 ndiff++;
             }
         if (ndiff || nw) {
@@ -271,7 +284,7 @@ static void dual_tail(u32 k)
         }
     }
 skip:
-    dual_restore(arena, dsnap0, used); memcpy(stk, dsnap0 + used, DSTK);
+    dual_restore(arena, dsnap0); memcpy(stk, dsnap0 + used, DSTK);
     LG = lg0; memcpy(lift_fp, fp0, sizeof fp0); lift_fptop = fptop0;
     M32(slot) = real;
     dual_busy = 0;
@@ -417,18 +430,21 @@ void lift_call_regs(u32 id, u32 *r)
  * frame, plus the registers; loading restores the baseline first. */
 #define PG 4096u
 #define STATE_MAX (24u << 20)
-static u8 *baseline;
-static u32 base_used;
+static u8 *baseline, *baseline_data;
+static u32 base_used, data_len;
 #define STACK_SAVE (64u << 10)
+#define DATA_PAGE (1u << 31)
 static u8 *stack_base_copy;
 
 void lift_baseline(void)
 {
     if (baseline || !inited) return;
     base_used = (heap_ptr - LIFT_ARENA_BASE + PG - 1) & ~(PG - 1);
-    baseline = malloc(base_used);
+    data_len = (LIFT_DATA_END - LIFT_DATA_BASE + PG - 1) & ~(PG - 1);
+    baseline = malloc(base_used); baseline_data = malloc(data_len);
     stack_base_copy = malloc(STACK_SAVE);
     memcpy(baseline, (void *)(uintptr_t)LIFT_ARENA_BASE, base_used);
+    memcpy(baseline_data, (void *)(uintptr_t)LIFT_DATA_BASE, data_len);
     memcpy(stack_base_copy, (void *)(uintptr_t)(LIFT_ARENA_BASE + LIFT_ARENA_SIZE - STACK_SAVE), STACK_SAVE);
 }
 
@@ -441,7 +457,7 @@ int lift_state_save(void *out, size_t cap)
     u8 *o = out, *p;
     state_hdr_t *h = (state_hdr_t *)o;
     u32 i, np = 0, sp = 0, cur_used = (heap_ptr - LIFT_ARENA_BASE + PG - 1) & ~(PG - 1);
-    u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE;
+    u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE, *data = (u8 *)(uintptr_t)LIFT_DATA_BASE;
     u8 *stk = arena + LIFT_ARENA_SIZE - STACK_SAVE;
     if (!baseline || cap < sizeof *h) return 0;
     memset(h, 0, sizeof *h);
@@ -454,13 +470,19 @@ int lift_state_save(void *out, size_t cap)
             *(u32 *)p = i; memcpy(p + 4, arena + i * PG, PG); p += 4 + PG; np++;
         }
     }
+    for (i = 0; i < data_len / PG; i++) {
+        if (memcmp(data + i * PG, baseline_data + i * PG, PG)) {
+            if ((size_t)(p - o) + 4 + PG > cap) return 0;
+            *(u32 *)p = DATA_PAGE | i; memcpy(p + 4, data + i * PG, PG); p += 4 + PG; np++;
+        }
+    }
     for (i = 0; i < STACK_SAVE / PG; i++) {
         if (memcmp(stk + i * PG, stack_base_copy + i * PG, PG)) {
             if ((size_t)(p - o) + 4 + PG > cap) return 0;
             *(u32 *)p = i; memcpy(p + 4, stk + i * PG, PG); p += 4 + PG; sp++;
         }
     }
-    h->magic = 0x4C46535Au; h->version = 1; h->heap_ptr = heap_ptr; h->used_pages = np; h->stack_pages = sp; h->base_used = base_used;
+    h->magic = 0x4C46535Au; h->version = 2; h->heap_ptr = heap_ptr; h->used_pages = np; h->stack_pages = sp; h->base_used = base_used;
     h->lg = LG; memcpy(h->fp, lift_fp, sizeof lift_fp); h->fptop = lift_fptop;
     return (int)(p - o);
 }
@@ -469,20 +491,25 @@ int lift_state_load(const void *in, size_t n)
 {
     const u8 *p = in;
     const state_hdr_t *h = (const state_hdr_t *)p;
-    u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE;
+    u8 *arena = (u8 *)(uintptr_t)LIFT_ARENA_BASE, *data = (u8 *)(uintptr_t)LIFT_DATA_BASE;
     u8 *stk = arena + LIFT_ARENA_SIZE - STACK_SAVE;
     u32 i;
-    if (!baseline || n < sizeof *h || h->magic != 0x4C46535Au || h->version != 1 || h->base_used != base_used) return 0;
+    if (!baseline || n < sizeof *h || h->magic != 0x4C46535Au || h->version != 2 || h->base_used != base_used) return 0;
     {   /* validate */
         const u8 *q = p + sizeof *h;
         u32 cnt = h->used_pages + h->stack_pages;
         if ((size_t)(q - p) + (size_t)cnt * (4 + PG) > n) return 0;
     }
     memcpy(arena, baseline, base_used);
+    memcpy(data, baseline_data, data_len);
     if (h->heap_ptr > heap_ptr) memset(arena + base_used, 0, ((h->heap_ptr - LIFT_ARENA_BASE + PG - 1) & ~(PG - 1)) - base_used);
     memcpy(stk, stack_base_copy, STACK_SAVE);
     p += sizeof *h;
-    for (i = 0; i < h->used_pages; i++, p += 4 + PG) memcpy(arena + (size_t)*(const u32 *)p * PG, p + 4, PG);
+    for (i = 0; i < h->used_pages; i++, p += 4 + PG) {
+        u32 idx = *(const u32 *)p;
+        if (idx & DATA_PAGE) memcpy(data + (size_t)(idx & ~DATA_PAGE) * PG, p + 4, PG);
+        else memcpy(arena + (size_t)idx * PG, p + 4, PG);
+    }
     for (i = 0; i < h->stack_pages; i++, p += 4 + PG) memcpy(stk + (size_t)*(const u32 *)p * PG, p + 4, PG);
     heap_ptr = h->heap_ptr;
     LG = h->lg; memcpy(lift_fp, h->fp, sizeof lift_fp); lift_fptop = h->fptop;

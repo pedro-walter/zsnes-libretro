@@ -1,5 +1,6 @@
 # Lifted (x86 asm -> C) build:  make -f Makefile.lift BITS=32|64
 BITS ?= 64
+OPT ?= -O1
 OSDEF ?= -D__LINUX__
 ASFLAGS ?= -Wa,--noexecstack
 LDLIBS ?= -lm
@@ -7,7 +8,7 @@ SYMLD ?= $(L)/lift_syms.ld
 L     := build/lift
 O     ?= build/lift$(BITS)
 CC    := gcc -m$(BITS)
-CFL   := $(CFEXTRA) -O1 -ffp-contract=off -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore $(OSDEF) -DNO_PNG -DLIFTED
+CFL   := $(CFEXTRA) $(OPT) -ffp-contract=off -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -I$(L) -Itools/lift -Ilibretro -Icore $(OSDEF) -DNO_PNG -DLIFTED
 LIFTC := $(wildcard $(L)/lift_*.c)
 LOBJ  := $(patsubst $(L)/%.c,$(O)/%.o,$(LIFTC))
 
@@ -80,10 +81,10 @@ dist64:
 WINFLAGS := -Ilibretro/shim -include sys/stat.h -include dirent.h
 # cross builds (need gcc-mingw-w64 / gcc-aarch64-linux-gnu / gcc-arm-linux-gnueabihf):  make -f Makefile.lift distwin64 distarm64 ...
 distwin64:
-	$(MAKE) -f Makefile.lift CC=x86_64-w64-mingw32-gcc BITS=64 FPX= 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win64 -j8
+	$(MAKE) -f Makefile.lift CC=x86_64-w64-mingw32-gcc BITS=64 FPX= 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32 -static-libgcc' O=build/win64 -j8
 	mkdir -p dist && cp build/win64/zsnes_lifted.so dist/zsnes_libretro_win64.dll
 distwin32:
-	$(MAKE) -f Makefile.lift SYMLD=$(L)/lift_syms_u.ld CC=i686-w64-mingw32-gcc BITS=32 FPX= 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32' O=build/win32 -j8
+	$(MAKE) -f Makefile.lift SYMLD=$(L)/lift_syms_u.ld CC=i686-w64-mingw32-gcc BITS=32 FPX= 'OSDEF=-D__WIN32__ $(WINFLAGS)' ASFLAGS= 'LDLIBS=-lws2_32 -static-libgcc' O=build/win32 -j8
 	mkdir -p dist && cp build/win32/zsnes_lifted.so dist/zsnes_libretro_win32.dll
 distarm64:
 	$(MAKE) -f Makefile.lift CC=aarch64-linux-gnu-gcc BITS=64 FPX= O=build/arm64 -j8
