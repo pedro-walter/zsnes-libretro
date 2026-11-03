@@ -33,7 +33,7 @@ static u32 dual1(u32 esi, u32 *pebx, u32 edx, u32 ch)
 
 static void finish(void) { Z32(pngwinen, 0) = Z32(ngwinen, 0); }
 
-static void build(u32 eax, u32 ebx, int ns2)
+void zl_build_window(u32 eax, u32 ebx, int ns2)
 {
     u32 ecx, edx, esi, edi, ch, cl;
     if (!ns2) {
@@ -156,5 +156,5 @@ static void build(u32 eax, u32 ebx, int ns2)
     LG.ebx = ebx;
 }
 
-void zl_BuildWindow(void)  { build(LG.eax, LG.ebx, 0); }
-void zl_BuildWindow2(void) { build(LG.eax, LG.ebx, 1); }
+void zl_BuildWindow(void)  { zl_build_window(LG.eax, LG.ebx, 0); }
+void zl_BuildWindow2(void) { zl_build_window(LG.eax, LG.ebx, 1); }

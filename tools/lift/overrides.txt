@@ -1238,3 +1238,5 @@ video/newgfx16.ao:ProcessTransparencies zl_ProcessTransparencies noregs
 newengine16b zl_newengine16b
 BuildWindow zl_BuildWindow cmp=eax,ecx,edx,ebx,esi,edi
 BuildWindow2 zl_BuildWindow2 cmp=eax,ecx,edx,ebx,esi,edi
+video/newgfx16.ao:MainScreenClip zl_MainScreenClip noregs
+video/newgfx16.ao:SubScreenClip zl_SubScreenClip noregs
