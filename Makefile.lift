@@ -38,7 +38,7 @@ $(O)/zsnes_lifted.so: $(LOBJ) $(O)/lift_rt.o $(O)/lift_data.o $(COBJ) $(L)/lift_
 # Regenerate the lifted C from the pristine upstream asm objects (build/ref/**/*.ao, built by the main Makefile) and
 # rebuild.  Needs python3 with capstone + pyelftools.
 gen:
-	$(MAKE) -f Makefile refexe-bin
+	$(MAKE) -f Makefile refobjs B=build
 	python3 tools/lift/gen.py $(L)
 	cp tools/lift/lift.h tools/lift/lift_mmx.h $(L)/
 .PHONY: all gen

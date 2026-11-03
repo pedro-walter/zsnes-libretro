@@ -73,7 +73,8 @@ RCSRC := linux/zfilew linux/ztcp linux/zipxw linux/sdllink linux/sw_draw linux/z
          chips/dsp1emu chips/seta10 chips/sdd1emu cpu/executec cfgload initc uic patch version \
          effects/burn effects/water effects/smoke
 UPS  := upstream/zsnes_1_42/src
-ROBJ := $(addprefix $(B)/ref/,$(addsuffix .ao,$(ASM))) $(addprefix $(B)/ref/,$(addsuffix .co,$(RCSRC))) $(B)/ref/sdl_shim.co $(B)/ref/stubs.co
+ASMREF := $(filter-out cpu/cpustub,$(ASM))
+ROBJ := $(addprefix $(B)/ref/,$(addsuffix .ao,$(ASMREF))) $(addprefix $(B)/ref/,$(addsuffix .co,$(RCSRC))) $(B)/ref/sdl_shim.co $(B)/ref/stubs.co
 # the reference exe is built from the PRISTINE upstream asm (no libretro hooks)
 $(B)/ref/%.ao: $(UPS)/%.asm
 	@mkdir -p $(dir $@)
@@ -84,6 +85,9 @@ $(B)/ref/%.co: $(CORE)/%.c
 $(B)/ref/%.co: refexe/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(RCFLAGS) -c -o $@ $<
+# pristine upstream asm + original C objects only (input of the lifter)
+refobjs: $(ROBJ)
+.PHONY: refobjs
 refexe-bin: $(B)/zsnes_ref
 $(B)/zsnes_ref: $(ROBJ)
 	$(CC) -no-pie -Wl,-z,notext -o $@ $(ROBJ) -lm -lpthread /usr/lib/i386-linux-gnu/libz.so.1
