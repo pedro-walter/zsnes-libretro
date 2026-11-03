@@ -20,6 +20,17 @@
 
 %include "macros.mac"
 
+%ifdef __LIBRETRO__
+GLOBAL PSampleBuf,prev0,prev1,filter0,filter1,bshift,sampleleft,lastbl,loopbl,DSPInterP
+GLOBAL VolumeTableD,AdsrBendData,GainDecBendData,echowrittento,zs_dsp_bss_start,zs_dsp_bss_end
+GLOBAL zs_dsp_data_start,zs_dsp_data_end,powhack,paramhack
+SECTION .bss
+zs_dsp_bss_start:
+SECTION .data
+zs_dsp_data_start:
+SECTION .text
+%endif
+
 EXTSYM spcRam, spcPCRam, spcRamDP, spcS, spcX, MovieProcessing
 EXTSYM CNetType, soundon, RevStereo
 EXTSYM PitchModEn,SoundNoiseDis
@@ -5303,7 +5314,23 @@ section .bss
 echowrittento resb 1
 section .text
 
+%ifdef __LIBRETRO__
+EXTSYM zs_dsp_mix
+SECTION .bss
+zs_dsp_handled resd 1
+SECTION .text
 NEWSYM ProcessSoundBuffer
+    pushad
+    call zs_dsp_mix
+    mov [zs_dsp_handled],eax
+    popad
+    cmp dword[zs_dsp_handled],0
+    je ProcessSoundBuffer_asm
+    ret
+NEWSYM ProcessSoundBuffer_asm
+%else
+NEWSYM ProcessSoundBuffer
+%endif
     ; Clear the DSP Buffer
     mov edi,DSPBuffer
     mov ax,ds
@@ -5500,3 +5527,17 @@ NEWSYM LPFexit
     ret
 
 
+
+%ifdef __LIBRETRO__
+NEWSYM zs_voicestarter_call
+    pushad
+    mov eax,[esp+36]
+    call VoiceStarter
+    popad
+    ret
+SECTION .bss
+zs_dsp_bss_end:
+SECTION .data
+zs_dsp_data_end:
+SECTION .text
+%endif

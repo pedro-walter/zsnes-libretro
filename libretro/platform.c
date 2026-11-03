@@ -238,6 +238,12 @@ void drawscreenwin(void)
 int zs_audio_chunk(int16_t *out)
 {
     int i;
+    if (getenv("ZS_DSPDBG")) {
+        extern unsigned char SoundInterpType, MMXSupport, StereoSound, LowPassFilterType, cfgecho, Surround, RevStereo, DSPMem[], echoon0[], Voice0Status[], Voice0Disable[];
+        extern unsigned int BufferSizeB, MaxEcho, FIRTAPVal0, FIRTAPVal1;
+        static int n;
+        if ((n++ % 400) == 0) fprintf(stderr, "dsp interp=%d mmx=%d stereo=%d lpf=%d echodis=%d surr=%d rev=%d bufB=%u maxecho=%u fir0=%d fir1=%d flg=%02x eon=%02x pmon=%02x non=%02x status=%d%d%d%d%d%d%d%d\n", SoundInterpType, MMXSupport, StereoSound, LowPassFilterType, cfgecho, Surround, RevStereo, BufferSizeB, MaxEcho, FIRTAPVal0, FIRTAPVal1, DSPMem[0x6c], DSPMem[0x4d], DSPMem[0x2d], DSPMem[0x3d], Voice0Status[0],Voice0Status[1],Voice0Status[2],Voice0Status[3],Voice0Status[4],Voice0Status[5],Voice0Status[6],Voice0Status[7]);
+    }
     zs_call_asm(SoundProcess);  /* sets buffer sizes and runs ProcessSoundBuffer */
     for (i = 0; i < 256; i++) {
         int v = DSPBuffer[i];
