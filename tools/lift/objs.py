@@ -7,7 +7,7 @@ R_386_PC32 = 2
 CODE_SHIFT = 21                 # code id = (objidx+1) << 21 | text offset
 EXT_OBJ = 0x7F                  # pseudo object holding foreign (C) functions
 SENT_OBJ = 0x7E                 # return-to-C sentinel
-ARENA_BASE = 0x10000000
+ARENA_BASE = 0x30000000
 ARENA_SIZE = 0x10000000
 DATA_BASE = ARENA_BASE + 0x10000
 

@@ -11,12 +11,12 @@ all: $(O)/zsnes_lifted.so
 $(O)/%.o: $(L)/%.c tools/lift/lift.h tools/lift/lift_mmx.h
 	@mkdir -p $(O)
 	$(CC) $(CFL) -c -o $@ $<
-$(O)/lift_rt.o: tools/lift/lift_rt.c tools/lift/lift.h
+$(O)/lift_rt.o: tools/lift/lift_rt.c tools/lift/lift.h $(L)/lift_syms.h
 	@mkdir -p $(O)
 	$(CC) $(CFL) -c -o $@ $<
 $(O)/lift_data.o: $(L)/lift_data.bin
 	@mkdir -p $(O)
-	printf '.section .rodata\n.globl lift_data_bin\nlift_data_bin:\n.incbin "$(L)/lift_data.bin"\n.globl lift_data_bin_len\nlift_data_bin_len:\n.long %d\n' $$(stat -c %s $(L)/lift_data.bin) > $(O)/lift_data.s
+	printf '.section .rodata\n.globl lift_data_bin\nlift_data_bin:\n.incbin "$(L)/lift_data.bin"\n.globl lift_data_bin_len\nlift_data_bin_len:\n.long %d\n.section .note.GNU-stack,"",@progbits\n' $$(stat -c %s $(L)/lift_data.bin) > $(O)/lift_data.s
 	$(CC) -c -o $@ $(O)/lift_data.s
 
 # C sources shared with the guest: variables are moved into the arena by tools/lift/cfix.py
