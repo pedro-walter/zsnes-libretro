@@ -49,21 +49,45 @@ under `wine`.  All platforms are built with `-ffp-contract=off` (FMA contraction
 ## C overrides (the port in progress)
 
 `tools/lift/overrides.txt` lists asm functions that are replaced by hand-written C in `core/zl/` (register ABI through the
-lifted `LG` state; the original lifted body stays available).  Done so far, all bit-identical to the asm core: DSP mixer
-and register writes, SPC700 opcodes/timers, DMA/HDMA, PPU/IO register handlers, the scanline scheduler, all 65816
-opcodes (incl. decimal ADC/SBC with a portable model of x86 DAA/DAS) and the memory bank handlers.
-`ZL_DUAL=N [ZL_DUAL_ONLY=name] [ZL_DUAL_MAX=n]` runs every Nth call of an override twice (C, then the original lifted
-code, from the same state) and compares the whole guest memory + registers; `LIFT_NOOVR=name,...|all` disables overrides
-(bisecting); `LIFT_PROF=2` prints the hottest guest entry points.  Still lifted asm: SuperFX, SA-1, the video engine,
-init/UI glue, the remaining parts of execute.asm.
+lifted `LG` state; the original lifted body stays available as the oracle).  Done so far, all bit-identical to the asm core
+(18 ROMs, scripted random input, video/WRAM/audio CRCs):
+
+| area | C file(s) |
+|---|---|
+| DSP mixer, DSP register writes, key-on | `dspmix.c`, `dspw.c` |
+| SPC700 opcodes + timers | `spc700.c` |
+| 65816 opcodes (incl. decimal ADC/SBC via a portable model of x86 DAA/DAS), memory bank handlers | `cpu.c`, `mem.c` |
+| SA-1: its 65816 opcodes (the same code compiled with the SA-1 state names), registers/arith/var-length/IRAM | `cpu_sa1.c`, `sa1regs.c` |
+| DMA/HDMA, PPU/IO register handlers, scanline scheduler | `dma.c`, `regs.c`, `sched.c` |
+| video: per-line state capture, window tables, screen clipping, colour math (`ProcessTransparencies`), tile cache conversion, sprite caching and sprite lists | `video_line.c`, `video_win.c`, `video_clip.c`, `video_transp.c`, `video_cache.c`, `video_sprcache.c`, `video_sprites.c` |
+| SuperFX registers/RAM windows, DSP-1 command interface, ST010/ST011 memory | `sfxregs.c`, `dsp1.c`, `seta.c` |
+
+Verification tools (`tools/lift/lift_rt.c`):
+* `ZL_DUAL=N [ZL_DUAL_ONLY=name] [ZL_DUAL_MAX=n]` runs every Nth call of an override twice (C, then the original lifted code, from
+  the same state) and compares the whole guest memory + registers (`core/zl/dualign.c` lists scratch areas to ignore).
+  `tools/dev/dualall.sh <N> <frames> <name>` does it for all ROMs in parallel.
+* `ZL_DUALT=N [ZL_DUAL_ONLY=name]` does the same for the tail-style overrides (opcode handlers that end in "jump to the next
+  handler"): the cycle counter is forced to 0 so that exactly one opcode runs, then the real emulation continues with the C code.
+* `LIFT_NOOVR=name,...|all` disables overrides (bisecting); `LIFT_PROF=2` prints the hottest guest entry points.
+* `tools/rom_check.sh`, `tools/rom_batch.sh <dir> <frames> <seeds>`: ref-vs-candidate with scripted input (`CAND=<so>` selects the candidate).
+
+Still lifted asm (no hand-written C yet): the SuperFX interpreter (`fxemu2*.asm`, `fxtable.asm`: 16 handler tables, runtime
+patched plot routines), SPC7110 (needs data files / ROM hacks), C4 and OBC1 (OBC1 is never enabled by ZSNES for the Metal Combat dump
+used here), the SA-1 DMA/character-conversion engines, DSP-2..4, the new-engine renderer proper (`StartDrawNewGfx16b`, the tile/line/sprite
+drawers: ~13k lines of macros) and the old per-line engine (only Stunt Race FX uses it), the remainder of `execute.asm`, the opcode-table
+builders, init and UI glue.
 
 ## Status
 
-* Top Gear (E), TGC, the USA/randomizer ROMs: identical to the asm core; random-input 6000 frame run identical.
-* PAL/NTSC, SRAM, reset, save states work. No cheats, no zip/JMA (the frontend unwraps archives), no netplay/GUI.
-* Not translated (will abort with a message if reached): the mode-7 EXTBG routines that patch their own code
-  (`mode7ext.asm`), the DOS-only files, the hq2x/3x/4x filters. Coprocessor code (SuperFX, SA-1, DSP-1..4, S-DD1,
-  SPC7110, ...) is lifted like everything else but there are no ROMs here to exercise it end to end.
+* All 18 test ROMs (LoROM/HiROM, SA-1, SuperFX incl. Stunt Race FX, DSP-1, C4, OBC1 header, ST010/011, S-DD1, SPC7110) are identical
+  to the asm reference core over thousands of frames with random input; Top Gear (E) also matches the real ZSNES executable's trace.
+* PAL/NTSC, SRAM, reset, save states, Pro Action Replay RAM cheats work. No zip/JMA (the frontend unwraps archives), no netplay/GUI,
+  no Game Genie, mouse/Super Scope/multitap are not mapped.
+* Not translated (will abort with a message if reached): the mode-7 EXTBG routines that patch their own code (`mode7ext.asm`), the
+  DOS-only files, the hq2x/3x/4x filters.
+* Two bugs of the original asm were fixed because they made the reference itself misbehave: Stunt Race FX's old video engine read
+  `fulladdtab` out of range (`pal16bxcl` high word, also patched in `upstream/.../makev16b.asm` which is what the lifter reads) and
+  `clearback16t` lived in a non-executable `.data` section in the asm reference build.
 
 ## Notes for development
 
