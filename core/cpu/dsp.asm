@@ -1539,6 +1539,7 @@ NEWSYM RDSPRegFF      ;
       ProcessGain2 %1
 %endmacro
 
+GLOBAL spcres
 SECTION .bss
 NEWSYM ADSRGAINSwitch, resb 1
 SECTION .text
@@ -1980,7 +1981,18 @@ NEWSYM WDSPReg4C       ; Key On
       pop eax
       ret
 
+%ifdef __LIBRETRO__
+EXTSYM zs_keyon_c
 NEWSYM ProcessKeyOn
+      pushad
+      and eax,0FFh
+      push eax
+      call zs_keyon_c
+      add esp,4
+      popad
+      ret
+%endif
+NEWSYM ProcessKeyOn_asm
       test al,1
       jz .TestVoice1
       push edx

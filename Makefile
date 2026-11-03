@@ -17,7 +17,7 @@ ASM := $(addprefix chips/,sfxproc fxemu2 dsp1proc fxemu2b fxemu2c fxtable sa1pro
        $(addprefix linux/,copyvwin sdlintrf) \
        $(addprefix dos/,debug joy modemrtn vesa2 initvid sw gppro vesa12) \
        endmem init ui vcache
-CSRC := linux/zfilew linux/ztcp linux/zipxw chips/dsp1emu chips/seta10 chips/sdd1emu cpu/executec cpu/spc700c cpu/dspc cfgload initc uic patch version \
+CSRC := linux/zfilew linux/ztcp linux/zipxw chips/dsp1emu chips/seta10 chips/sdd1emu cpu/executec cpu/spc700c cpu/dspc cpu/dspw cfgload initc uic patch version \
         effects/burn effects/water effects/smoke
 CXXSRC :=
 
@@ -104,3 +104,8 @@ fuzz: all harness
 dspfuzz: all harness
 	HARNESS_DIR=$(abspath $(B)) $(B)/harness $(B)/zsnes_libretro.so "$(ROM)" -f 300 -D $(or $(N),300000) 2>&1 | grep -E "dsp diff|dsp fuzz|dsp cov"
 .PHONY: dspfuzz
+
+# Differential fuzz of the C DSP register-write / key-on code vs the original asm handlers
+dspwfuzz: all harness
+	HARNESS_DIR=$(abspath $(B)) $(B)/harness $(B)/zsnes_libretro.so "$(ROM)" -f 300 -W $(or $(N),300000) 2>&1 | grep -E "dspw|dsp write"
+.PHONY: dspwfuzz

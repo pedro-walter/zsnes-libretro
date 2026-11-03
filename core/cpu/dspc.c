@@ -64,7 +64,7 @@ extern u32 prev0, prev1, filter0, filter1, powhack, paramhack[4];
 extern u8 bshift, lastbl, loopbl, sampleleft;
 extern u32 DecayRate[8], SustainRate[32], Increase[32];
 extern u8 SustainValue[8], AdsrSustLevLoc[8], AdsrBendData[], GainDecBendData[], VolumeTableD[];
-extern void zs_voicestarter_call(int v);
+extern void zs_voicestarter_c(int v);
 extern void ProcessSoundBuffer_asm(void);
 extern u8 zs_dsp_bss_start[], zs_dsp_bss_end[], zs_dsp_data_start[], zs_dsp_data_end[];
 
@@ -357,7 +357,7 @@ static int env_next(int v)
         DSPMem[0x08 + v * 16] = 0;
         DSPMem[0x09 + v * 16] = 0;
         DSPMem[0x7C] |= bit;
-        zs_voicestarter_call(v);
+        zs_voicestarter_c(v);
         return ENV_RESTART;
     default: /* 4, 200 and anything unknown */ COV(12);
         memset(&DLPFsamples[v * 24 + 16], 0, 16);

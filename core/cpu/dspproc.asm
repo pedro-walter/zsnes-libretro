@@ -23,7 +23,7 @@
 %ifdef __LIBRETRO__
 GLOBAL PSampleBuf,prev0,prev1,filter0,filter1,bshift,sampleleft,lastbl,loopbl,DSPInterP
 GLOBAL VolumeTableD,AdsrBendData,GainDecBendData,echowrittento,zs_dsp_bss_start,zs_dsp_bss_end
-GLOBAL zs_dsp_data_start,zs_dsp_data_end,powhack,paramhack
+GLOBAL zs_dsp_data_start,zs_dsp_data_end,powhack,paramhack,TimeTemp,IncNTemp,EnvITemp,StatTemp,spc700temp
 SECTION .bss
 zs_dsp_bss_start:
 SECTION .data
@@ -1580,6 +1580,8 @@ NEWSYM InitSPC
 %ifdef __LIBRETRO__
      EXTSYM zs_spc_install_asm
      call zs_spc_install_asm
+     EXTSYM zs_dspw_install
+     call zs_dspw_install
 %endif
 %ifdef __MSDOS__
      call SB_alloc_dma
@@ -5535,6 +5537,29 @@ NEWSYM zs_voicestarter_call
     call VoiceStarter
     popad
     ret
+
+EXTSYM zs_dspw_c
+%assign zi 0
+%rep 256
+zs_wstub_ %+ zi:
+    pushad
+    push eax
+    push dword zi
+    call zs_dspw_c
+    add esp,8
+    popad
+    ret
+%assign zi zi+1
+%endrep
+SECTION .data
+GLOBAL zs_wstub_tab
+zs_wstub_tab:
+%assign zi 0
+%rep 256
+    dd zs_wstub_ %+ zi
+%assign zi zi+1
+%endrep
+SECTION .text
 SECTION .bss
 zs_dsp_bss_end:
 SECTION .data
