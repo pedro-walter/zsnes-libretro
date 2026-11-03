@@ -22,3 +22,8 @@ TimeTemp
 VolumeTableD
 bgscroltemp
 SpeedHackSafeTable
+BackAreaAdd
+BackAreaFillCol
+BackAreaUnFillCol
+clinemainsub
+prevpal2

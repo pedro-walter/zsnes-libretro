@@ -112,6 +112,13 @@ def main():
             if ln:
                 key = P.gtext.get(ln[0]) or P.local_text(ln[0])
                 if key is not None: taken.add(objs.code_id(*key))
+    ovp0 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'overrides.txt')
+    if os.path.exists(ovp0):          # overridden labels must be dispatchable (the original body is run through them)
+        for ln in open(ovp0):
+            ln = ln.split('#')[0].split()
+            if ln and ln[0] != '-':
+                key = P.gtext.get(ln[0]) or P.local_text(ln[0])
+                if key is not None: taken.add(objs.code_id(*key))
     takennodes = [node_of(v) for v in taken]
     takennodes = [x for x in takennodes if x is not None]
     GRET = 0; GIND = 0

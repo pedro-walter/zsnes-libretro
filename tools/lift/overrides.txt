@@ -1234,3 +1234,5 @@ regaccessbankr16 zl_regaccessbankr16
 regaccessbankw8 zl_regaccessbankw8
 regaccessbankw16 zl_regaccessbankw16
 UpdateDPage zl_UpdateDPage
+video/newgfx16.ao:ProcessTransparencies zl_ProcessTransparencies noregs
+newengine16b zl_newengine16b
