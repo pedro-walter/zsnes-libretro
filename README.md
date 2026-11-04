@@ -98,7 +98,7 @@ builders, init and UI glue.
 * All 18 test ROMs (LoROM/HiROM, SA-1, SuperFX incl. Stunt Race FX, DSP-1, C4, OBC1 header, ST010/011, S-DD1, SPC7110) are identical
   to the asm reference core over thousands of frames with random input; Top Gear (E) also matches the real ZSNES executable's trace.
 * PAL/NTSC, SRAM, reset, save states, Pro Action Replay RAM cheats work. No zip/JMA (the frontend unwraps archives), no netplay/GUI,
-  SNES mouse (port 1/2) and Super Scope (port 2, via the libretro lightgun device) are mapped (untested against real hardware behaviour; multitap is not). Game Genie codes patch the ROM image after the first frame (unverified against the original).
+  SNES mouse (port 1/2) and Super Scope (port 2, via the libretro lightgun device) are mapped (untested against real hardware behaviour; multitap is not). Game Genie codes patch the ROM image after the first frame (`tools/mkrom_gg.py` makes a test ROM and prints a code for it; `harness -K <code>`).
 * Not translated (will abort with a message if reached): the DOS-only files and the hq2x/3x/4x filters. The old engine's mode-7 EXTBG
   routines (`mode7ext.asm`) patch the immediates of their own inner loop; the lifter turns such stores into per-instruction cells
   (`pcN` in the generated C), and the asm now uses `strict dword` so that the patched fields really are 32-bit (with `nasm -O1` the
