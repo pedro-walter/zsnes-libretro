@@ -214,3 +214,58 @@ u32 zl_drawbg1line16b(void) { L8(A(prdatb) + EBX) = 0; return bgline(0, ZID_draw
 u32 zl_drawbg2line16b(void) { L8(A(prdata) + EBX) = 0; return bgline(1, ZID_drawbg2line16b); }
 u32 zl_drawbg3line16b(void) { L8(A(prdatc) + EBX) = 0; return bgline(2, ZID_drawbg3line16b); }
 u32 zl_drawbg4line16b(void) { L8(A(prdata) + EBX) = 0; return bgline(3, ZID_drawbg4line16b); }
+
+/* drawbg1..4linepr116b */
+static u32 bgline_pr1(int bg, u32 selfid)
+{
+    int mosaic = (L8(A(mosenng) + EBX) & (1u << bg)) && L8(A(mosszng) + EBX) != 0;
+    u8 bgma = L8(A(BGMA) + EBX);
+    int big = L8(A(t16x161) + EBX + bg * 256) == 1;
+    if (mosaic || bgma >= 5 || (!big && L8(A(osm2dis)) != 1 && bgma == 2)) { zl_orig(selfid); return 0; }
+    S32(A(ng16bprval), 0x2000);
+    S32(A(pesimpng), ESI);
+    S32(A(ng16bbgval), (u32)bg);
+    L8(A(curmosaicsz)) = 1;
+    u32 eax;
+    if (!big) {
+        eax = (L32(A(BG1SYl) + EBX * 2 + bg * 512) & 0xFFFF) + EBX;
+        if (L8(A(intrlng) + EBX) & 1) { eax += EBX; eax += L32(A(cfieldad)); }
+        eax = (eax * 8) & 0x38;
+    } else {
+        ECX = (L32(A(BG1SYl) + EBX * 2 + bg * 512) & 0xFFFF);
+        S32(A(taddnfy16x16), 0);
+        ECX += EBX;
+        if (L8(A(intrlng) + EBX) & 1) { ECX += EBX; ECX += L32(A(cfieldad)); }
+        S32(A(taddfy16x16), 16);
+        if (ECX & 8) { S32(A(taddnfy16x16), 16); S32(A(taddfy16x16), (u32)-16); }
+        eax = (ECX * 8) & 0x38;
+    }
+    S32(A(yposng), eax);
+    S32(A(flipyposng), eax ^ 0x38);
+    u32 edx = L32(A(BGMA) + EBX) & 7;
+    ECX = L32(A(bgtxad) + EBX * 2 + bg * 512);
+    L16(A(bgtxadd)) = (u16)ECX;
+    ECX = L32(A(ngptrdat) + bg * 1024 + EBX * 4);
+    edx = L32(A(colormodedef) + edx * 4 + bg);
+    S32(A(ngptrdat2), ECX);
+    EAX = L32(A(ngceax) + bg * 1024 + EBX * 4);
+    EDI = L32(A(ngcedi) + bg * 1024 + EBX * 4);
+    EDX = edx;
+    u8 dl = (u8)edx;
+    u32 tgt;
+    if (dl == 2) tgt = big ? ZID_drawlineng16x164b16b : ZID_drawlineng4b16b;
+    else if (dl == 1) tgt = big ? ZID_drawlineng16x162b16b : ZID_drawlineng2b16b;
+    else if (dl == 3) tgt = big ? ZID_drawlineng16x168b16b : ZID_drawlineng8b16b;
+    else return 0;
+    if (dl == 1) S32(A(mode0add), 0);
+    process_build_window(bg);
+    if (dl == 1 && L8(A(BGMA) + EBX) == 0) S32(A(mode0add), L32(A(mode0ads)));
+    ECX = EBX + bg * 256;
+    EDX = (EDX & ~0xFFu) | (1u << bg);
+    LG.esp -= 4; S32(LG.esp, EBX);
+    return tgt;
+}
+u32 zl_drawbg1linepr116b(void) { return bgline_pr1(0, ZID_drawbg1linepr116b); }
+u32 zl_drawbg2linepr116b(void) { return bgline_pr1(1, ZID_drawbg2linepr116b); }
+u32 zl_drawbg3linepr116b(void) { return bgline_pr1(2, ZID_drawbg3linepr116b); }
+u32 zl_drawbg4linepr116b(void) { return bgline_pr1(3, ZID_drawbg4linepr116b); }

@@ -2697,6 +2697,14 @@ u32 zl_drawbg1tilepr116b(void);
 u32 zl_drawbg2tilepr116b(void);
 u32 zl_drawbg3tilepr116b(void);
 u32 zl_drawbg4tilepr116b(void);
+u32 zl_drawbg1line16b(void);
+u32 zl_drawbg2line16b(void);
+u32 zl_drawbg3line16b(void);
+u32 zl_drawbg4line16b(void);
+u32 zl_drawbg1linepr116b(void);
+u32 zl_drawbg2linepr116b(void);
+u32 zl_drawbg3linepr116b(void);
+u32 zl_drawbg4linepr116b(void);
 u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_wdsp00,
     ovw_zl_wdsp01,
@@ -4435,6 +4443,14 @@ u32 (*const lift_ovr_fns[])(void) = {
     zl_drawbg2tilepr116b,
     zl_drawbg3tilepr116b,
     zl_drawbg4tilepr116b,
+    zl_drawbg1line16b,
+    zl_drawbg2line16b,
+    zl_drawbg3line16b,
+    zl_drawbg4line16b,
+    zl_drawbg1linepr116b,
+    zl_drawbg2linepr116b,
+    zl_drawbg3linepr116b,
+    zl_drawbg4linepr116b,
     0 };
 const char *const lift_ovr_names[] = {
     "WDSPReg00",
@@ -6174,8 +6190,16 @@ const char *const lift_ovr_names[] = {
     "drawbg2tilepr116b",
     "drawbg3tilepr116b",
     "drawbg4tilepr116b",
+    "drawbg1line16b",
+    "drawbg2line16b",
+    "drawbg3line16b",
+    "drawbg4line16b",
+    "drawbg1linepr116b",
+    "drawbg2linepr116b",
+    "drawbg3linepr116b",
+    "drawbg4linepr116b",
     0 };
-const int lift_ovr_count = 1737;
+const int lift_ovr_count = 1745;
 const char *const lift_ovr_cnames[] = {
     "zl_wdsp00",
     "zl_wdsp01",
@@ -7914,6 +7938,14 @@ const char *const lift_ovr_cnames[] = {
     "zl_drawbg2tilepr116b",
     "zl_drawbg3tilepr116b",
     "zl_drawbg4tilepr116b",
+    "zl_drawbg1line16b",
+    "zl_drawbg2line16b",
+    "zl_drawbg3line16b",
+    "zl_drawbg4line16b",
+    "zl_drawbg1linepr116b",
+    "zl_drawbg2linepr116b",
+    "zl_drawbg3linepr116b",
+    "zl_drawbg4linepr116b",
     0 };
 const unsigned short lift_ovr_flags[] = {
     2,
@@ -9645,6 +9677,14 @@ const unsigned short lift_ovr_flags[] = {
     48896,
     48896,
     48896,
+    48897,
+    48897,
+    48897,
+    48897,
+    48897,
+    48897,
+    48897,
+    48897,
     48897,
     48897,
     48897,
@@ -11392,6 +11432,14 @@ const unsigned lift_ovr_ids[] = {
     0x7807892u,
     0x7807c77u,
     0x780805cu,
+    0x7808441u,
+    0x7809c07u,
+    0x780b403u,
+    0x780cbffu,
+    0x780e3fbu,
+    0x780f5a6u,
+    0x7810781u,
+    0x781195cu,
     0 };
 const unsigned lift_text_id[] = {
     0x200000u,
