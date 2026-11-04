@@ -1,0 +1,26 @@
+name: build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make -f Makefile.libretro -j$(nproc)
+      - uses: actions/upload-artifact@v4
+        with: { name: zsnes_libretro-linux-x64, path: "zsnes_libretro.so\nzsnes_libretro.info" }
+  windows:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { name: win64, cc: x86_64-w64-mingw32-gcc }
+          - { name: win32, cc: i686-w64-mingw32-gcc }
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64
+      - run: make -f Makefile.libretro platform=win CC=${{ matrix.cc }} -j$(nproc)
+      - uses: actions/upload-artifact@v4
+        with: { name: "zsnes_libretro-${{ matrix.name }}", path: "zsnes_libretro.dll\nzsnes_libretro.info" }
