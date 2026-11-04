@@ -101,8 +101,9 @@ Verification tools (`tools/lift/lift_rt.c`):
 Hand-written C also covers the DSP-2 command engine (`core/zl/dsp2.c`, test ROMs from `tools/mkrom_dsp2.py`), the C4 arithmetic commands and
 register-RAM glue (`core/zl/c4.c`, `tools/mkrom_c4.py`; the sprite/wireframe/scaler engines stay lifted), OBC-1 (`core/zl/obc.c`,
 `tools/mkrom_obc.py`), the SA-1-side memory banks (`mem.c`; the BW-RAM bitmap modes fall back to the original body) and the per-BG
-setup shims of the new video engine (`drawbg1..4{tile,line}{,pr1}16b`, `core/zl/video_bgtile.c`; mosaic / offset-per-tile / hi-res
-lines fall back to the original body).  Chip code was compared with the original over the whole machine state using `ZL_DUAL`; the video
+setup shims of the new video engine (`drawbg1..4{tile,line}{,pr1}16b`, `core/zl/video_bgtile.c`; mosaic / offset-per-tile lines fall back to the
+original body), the `drawline`/`drawline16b` dispatch, the NMI/IRQ entry code (`core/zl/irqenter.c`), `reg420Bw` (DMA enable) and the SuperFX
+register-update hooks (`sfxupd.c`).  Chip code was compared with the original over the whole machine state using `ZL_DUAL`; the video
 shims with `SSTEP=2 tools/rom_check.sh <rom> "" 2000 <seed>` (a CRC of every second frame).
 
 Still lifted asm (no hand-written C yet): SPC7110 (needs data files / ROM hacks), the C4 sprite/wireframe engines, the new-engine pixel drawers
