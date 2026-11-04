@@ -93,3 +93,44 @@ u32 zl_drawbg1tile16b(void) { L8(A(prdatb) + EBX) = 1; return bgtile(0); }
 u32 zl_drawbg2tile16b(void) { L8(A(prdata) + EBX) = 1; return bgtile(1); }
 u32 zl_drawbg3tile16b(void) { L8(A(prdatc) + EBX) = 1; return bgtile(2); }
 u32 zl_drawbg4tile16b(void) { L8(A(prdata) + EBX) = 1; return bgtile(3); }
+
+/* drawbg1..4tilepr116b: same dispatch, but the per-line setup was stored by the non-priority pass (ngptrdat/ngceax/ngcedi) */
+static u32 bgtile_pr1(int bg)
+{
+    S32(A(ng16bprval), 0x2000);
+    S32(A(ng16bbgval), (u32)bg);
+    int big = L8(A(t16x161) + EBX + bg * 256) == 1;
+    if (big) {
+        ECX = L32(A(BG1SYl) + EBX * 2 + bg * 512) & 0xFFFF;
+        S32(A(taddnfy16x16), 0);
+        ECX += EBX;
+        S32(A(taddfy16x16), 16);
+        if (ECX & 8) { S32(A(taddnfy16x16), 16); S32(A(taddfy16x16), (u32)-16); }
+    }
+    u32 edx = L32(A(BGMA) + EBX) & 7;
+    ECX = L32(A(bgtxad) + EBX * 2 + bg * 512);
+    L16(A(bgtxadd)) = (u16)ECX;
+    ECX = L32(A(ngptrdat) + bg * 1024 + EBX * 4);
+    edx = L32(A(colormodedef) + edx * 4 + bg);
+    S32(A(ngptrdat2), ECX);
+    EAX = L32(A(ngceax) + bg * 1024 + EBX * 4);
+    EDI = L32(A(ngcedi) + bg * 1024 + EBX * 4);
+    EDX = edx;
+    u8 dl = (u8)edx;
+    u32 tgt;
+    if (dl == 2) tgt = big ? ZID_drawtileng16x164b16b : ZID_drawtileng4b16b;
+    else if (dl == 1) tgt = big ? ZID_drawtileng16x162b16b : ZID_drawtileng2b16b;
+    else if (dl == 3) tgt = big ? ZID_drawtileng16x168b16b : ZID_drawtileng8b16b;
+    else return 0;                                       /* pop ebx; ret */
+    if (dl == 1) S32(A(mode0add), 0);
+    process_build_window(bg);
+    if (dl == 1 && L8(A(BGMA) + EBX) == 0) S32(A(mode0add), L32(A(mode0ads)));
+    ECX = EBX + bg * 256;
+    EDX = (EDX & ~0xFFu) | (1u << bg);
+    LG.esp -= 4; S32(LG.esp, EBX);
+    return tgt;
+}
+u32 zl_drawbg1tilepr116b(void) { return bgtile_pr1(0); }
+u32 zl_drawbg2tilepr116b(void) { return bgtile_pr1(1); }
+u32 zl_drawbg3tilepr116b(void) { return bgtile_pr1(2); }
+u32 zl_drawbg4tilepr116b(void) { return bgtile_pr1(3); }

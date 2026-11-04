@@ -7910,3 +7910,7 @@
 #define ZOVR_zl_drawbg2tile16b ((0x7Cu << 21) | 1730u)
 #define ZOVR_zl_drawbg3tile16b ((0x7Cu << 21) | 1731u)
 #define ZOVR_zl_drawbg4tile16b ((0x7Cu << 21) | 1732u)
+#define ZOVR_zl_drawbg1tilepr116b ((0x7Cu << 21) | 1733u)
+#define ZOVR_zl_drawbg2tilepr116b ((0x7Cu << 21) | 1734u)
+#define ZOVR_zl_drawbg3tilepr116b ((0x7Cu << 21) | 1735u)
+#define ZOVR_zl_drawbg4tilepr116b ((0x7Cu << 21) | 1736u)
