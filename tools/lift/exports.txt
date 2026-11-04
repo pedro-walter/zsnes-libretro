@@ -27,3 +27,4 @@ BackAreaFillCol
 BackAreaUnFillCol
 clinemainsub
 prevpal2
+C4Temp

@@ -21,23 +21,31 @@ dispatch:
     case 0xa07: goto La07;
     case 0xa16: goto La16;
     case 0xa25: goto La25;
+    case 0x1039: goto L1039;
     case 0x1089: goto L1089;
     case 0x108e: goto L108e;
     case 0x10a3: goto L10a3;
+    case 0x10a9: goto L10a9;
     case 0x10f9: goto L10f9;
     case 0x10fe: goto L10fe;
     case 0x111a: goto L111a;
+    case 0x1120: goto L1120;
     case 0x116c: goto L116c;
     case 0x1335: goto L1335;
+    case 0x1337: goto L1337;
     case 0x1519: goto L1519;
     case 0x155a: goto L155a;
     case 0x15e3: goto L15e3;
     case 0x17c6: goto L17c6;
+    case 0x17ce: goto L17ce;
     case 0x17f5: goto L17f5;
+    case 0x1804: goto L1804;
     case 0x180a: goto L180a;
+    case 0x180c: goto L180c;
     case 0x1887: goto L1887;
     case 0x194b: goto L194b;
     case 0x19f0: goto L19f0;
+    case 0x1a0c: goto L1a0c;
     case 0x1abe: goto L1abe;
     case 0x1d15: goto L1d15;
     case 0x1d1c: goto L1d1c;
@@ -1897,6 +1905,7 @@ L19f0:
     edi=M32(esp); esi=M32(esp+4); ebp=M32(esp+8); ebx=M32(esp+16); edx=M32(esp+20); ecx=M32(esp+24); eax=M32(esp+28); esp+=32;
     pc=M32(esp); esp+=4; goto dispatch;
 L1a0c:
+    OVR_GUARD(1705)
     {u32 a_=ecx, b_=0x1f4fu, r=(u32)(a_-b_);  zf=!r;}
     if (!zf) {goto L1a40;}
     {u32 v_=esi; esp-=4; M32(esp)=v_;}
@@ -2315,11 +2324,13 @@ L1fe0:
     if (zf) {goto L1a0c;}
     pc=M32(esp); esp+=4; goto dispatch;
 L1ffb:
+    OVR_GUARD(1706)
     {u32 a_=ecx, b_=M32((u32)(0x340a7059u)), r=(u32)(a_+b_); ecx=r; }
     eax=(eax&0xFFFFFF00u)|(u8)(M8((u32)(ecx)));
     {u32 a_=ecx, b_=M32((u32)(0x340a7059u)), r=(u32)(a_-b_); ecx=r; cf=a_<b_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L200a:
+    OVR_GUARD(1707)
     {u32 a_=ecx, b_=M32((u32)(0x340a7059u)), r=(u32)(a_+b_); ecx=r; }
     M8((u32)(ecx))=(u8)eax;
     {u32 a_=ecx, b_=M32((u32)(0x340a7059u)), r=(u32)(a_-b_); ecx=r; }

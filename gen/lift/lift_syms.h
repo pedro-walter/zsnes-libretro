@@ -103,6 +103,7 @@
 #define ZO_C4RamR 0x340a7051u
 #define ZO_C4RamW 0x340a7055u
 #define ZO_C4SObjSelec 0x34037d71u
+#define ZO_C4Temp 0x34037db5u
 #define ZO_C4values 0x34037e50u
 #define ZO_CBackupPos 0x34033e74u
 #define ZO_CEchoPtr 0x34033d48u
@@ -6005,6 +6006,13 @@
 #define ZID_processmode7hires16bd 0x66173c2u
 #define ZID_drawmode7ngextbg16b 0x660f462u
 #define ZID_drawmode7ngextbg216b 0x6616f38u
+#define ZID_WireFrameB 0x22017ceu
+#define ZID_WireFrameB2 0x2201804u
+#define ZID_C4SprScaleR 0x2201039u
+#define ZID_C4SprRotateR 0x22010a9u
+#define ZID_C4SprDisintegrate 0x2201120u
+#define ZID_C4BitPlaneWave 0x2201337u
+#define ZID_C4WireFrame 0x220180cu
 #define ZOVR_zl_wdsp00 ((0x7Cu << 21) | 0u)
 #define ZOVR_zl_wdsp01 ((0x7Cu << 21) | 1u)
 #define ZOVR_zl_wdsp02 ((0x7Cu << 21) | 2u)
@@ -7860,3 +7868,7 @@
 #define ZOVR_zl_DSP2Read16b ((0x7Cu << 21) | 1702u)
 #define ZOVR_zl_DSP2Write8b ((0x7Cu << 21) | 1703u)
 #define ZOVR_zl_DSP2Write16b ((0x7Cu << 21) | 1704u)
+#define ZOVR_zl_C4activate ((0x7Cu << 21) | 1705u)
+#define ZID_C4activate 0x2201a0cu
+#define ZOVR_zl_C4ReadReg ((0x7Cu << 21) | 1706u)
+#define ZOVR_zl_C4WriteReg ((0x7Cu << 21) | 1707u)

@@ -98,6 +98,7 @@ C4Ram = 0x340a7059;
 C4RamR = 0x340a7051;
 C4RamW = 0x340a7055;
 C4SObjSelec = 0x34037d71;
+C4Temp = 0x34037db5;
 C4values = 0x34037e50;
 CBackupPos = 0x34033e74;
 CEchoPtr = 0x34033d48;

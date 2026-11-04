@@ -266,7 +266,35 @@ void zl_membank0w16(void)
 }
 
 /* ---------------- 00-3F/80-BF banks: regaccessbank* ---------------- */
-#define HIROM_RARE (SPC7110Enable == 1 || C4Enable == 1 || OBCEnable == 1)
+#define HIROM_RARE (SPC7110Enable == 1)
+
+/* C4 / OBC1 register RAM: per-address handler tables (C4RamR / C4RamW hold guest code ids) */
+#define C4ENT(tab, i) (*(u32 *)(uintptr_t)(EBX + (i) * 4))
+#define C4RamR (*(u32 *)0x340a7051u)
+#define C4RamW (*(u32 *)0x340a7055u)
+static void c4ram_r8(void)
+{
+    u32 sv = ECX; ECX = (ECX - 0x6000) & 0x1FFF; EBX = C4RamR;
+    zl_mcall(C4ENT(R, ECX)); EBX = 0; ECX = sv;
+}
+static void c4ram_r16(void)
+{
+    u32 sv = ECX; ECX = (ECX - 0x6000) & 0x1FFF; EBX = C4RamR;
+    ECX++; zl_mcall(C4ENT(R, ECX)); ECX--; set_ah(get_al()); zl_mcall(C4ENT(R, ECX));
+    EBX = 0; ECX = sv;
+}
+static void c4ram_w8(void)
+{
+    u32 sv = ECX; ECX = (ECX - 0x6000) & 0x1FFF; EBX = C4RamW;
+    zl_mcall(C4ENT(W, ECX)); EBX = 0; ECX = sv;
+}
+static void c4ram_w16(void)
+{
+    u32 sv = ECX, ax = EAX; ECX = (ECX - 0x6000) & 0x1FFF; EBX = C4RamW;
+    zl_mcall(C4ENT(W, ECX)); ECX++; set_al(get_ah()); zl_mcall(C4ENT(W, ECX)); EAX = ax; ECX--;
+    EBX = 0; ECX = sv;
+}
+#define C4_PATH (SFXEnable != 1 && (C4Enable == 1 || OBCEnable == 1))
 void zl_regaccessbankr8(void)
 {
     if (ECX & 0x8000) { EBX = snesmmap[EBX]; set_al(M8(EBX + ECX)); EBX = 0; return; }
@@ -274,6 +302,7 @@ void zl_regaccessbankr8(void)
     if (ECX <= 0x48FF) { zl_mcall(REGPTRA(ECX)); EBX = 0; return; }
     if (ECX < 0x6000) { set_al(ECX >> 8); return; }
     if (HIROM_RARE) { zl_orig(ZID_regaccessbankr8); return; }
+    if (C4_PATH) { c4ram_r8(); return; }
     if (SFXEnable == 1) { sfxram_r8(); return; }
     EBX &= 0x7F;
     if ((EBX & 0xFF) < 0x10) { set_al(0); if (DSP1Type == 2) zl_mcall(ZID_DSP1Read8b); EBX = 0; return; }
@@ -290,6 +319,7 @@ void zl_regaccessbankr16(void)
     }
     if (ECX < 0x6000) { set_al(ECX >> 8); set_ah(ECX >> 8); return; }
     if (HIROM_RARE) { zl_orig(ZID_regaccessbankr16); return; }
+    if (C4_PATH) { c4ram_r16(); return; }
     if (SFXEnable == 1) { sfxram_r16(); return; }
     EBX &= 0x7F;
     if ((EBX & 0xFF) < 0x10) { set_ax(0); if (DSP1Type == 2) zl_mcall(ZID_DSP1Read16b); EBX = 0; return; }
@@ -303,6 +333,7 @@ void zl_regaccessbankw8(void)
     if (ECX <= 0x48FF) { zl_mcall(REGPTWA(ECX)); EBX = 0; return; }
     if (ECX < 0x6000) return;
     if (HIROM_RARE) { zl_orig(ZID_regaccessbankw8); return; }
+    if (C4_PATH) { c4ram_w8(); return; }
     if (SFXEnable == 1) { sfxram_w8(); return; }
     EBX &= 0x7F;
     if ((EBX & 0xFF) < 0x10) { if (DSP1Type == 2) zl_mcall(ZID_DSP1Write8b); EBX = 0; return; }
@@ -316,6 +347,7 @@ void zl_regaccessbankw16(void)
     if ((ECX & 0xFFFF) <= 0x48FF) { zl_mcall(REGPTWA(ECX)); ECX++; set_al(get_ah()); zl_mcall(REGPTWA(ECX)); ECX--; EBX = 0; return; }
     if (ECX < 0x6000) return;
     if (HIROM_RARE) { zl_orig(ZID_regaccessbankw16); return; }
+    if (C4_PATH) { c4ram_w16(); return; }
     if (SFXEnable == 1) { sfxram_w16(); return; }
     EBX &= 0x7F;
     if ((EBX & 0xFF) < 0x10) { if (DSP1Type == 2) zl_mcall(ZID_DSP1Write16b); return; }

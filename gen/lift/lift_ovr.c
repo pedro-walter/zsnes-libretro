@@ -2641,6 +2641,12 @@ void zl_DSP2Write8b(void);
 static u32 ovw_zl_DSP2Write8b(void) { zl_DSP2Write8b(); return 0; }
 void zl_DSP2Write16b(void);
 static u32 ovw_zl_DSP2Write16b(void) { zl_DSP2Write16b(); return 0; }
+void zl_C4activate(void);
+static u32 ovw_zl_C4activate(void) { zl_C4activate(); return 0; }
+void zl_C4ReadReg(void);
+static u32 ovw_zl_C4ReadReg(void) { zl_C4ReadReg(); return 0; }
+void zl_C4WriteReg(void);
+static u32 ovw_zl_C4WriteReg(void) { zl_C4WriteReg(); return 0; }
 u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_wdsp00,
     ovw_zl_wdsp01,
@@ -4347,6 +4353,9 @@ u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_DSP2Read16b,
     ovw_zl_DSP2Write8b,
     ovw_zl_DSP2Write16b,
+    ovw_zl_C4activate,
+    ovw_zl_C4ReadReg,
+    ovw_zl_C4WriteReg,
     0 };
 const char *const lift_ovr_names[] = {
     "WDSPReg00",
@@ -6054,8 +6063,11 @@ const char *const lift_ovr_names[] = {
     "DSP2Read16b",
     "DSP2Write8b",
     "DSP2Write16b",
+    "cpu/memory.ao:C4activate",
+    "C4ReadReg",
+    "C4WriteReg",
     0 };
-const int lift_ovr_count = 1705;
+const int lift_ovr_count = 1708;
 const char *const lift_ovr_cnames[] = {
     "zl_wdsp00",
     "zl_wdsp01",
@@ -7762,6 +7774,9 @@ const char *const lift_ovr_cnames[] = {
     "zl_DSP2Read16b",
     "zl_DSP2Write8b",
     "zl_DSP2Write16b",
+    "zl_C4activate",
+    "zl_C4ReadReg",
+    "zl_C4WriteReg",
     0 };
 const unsigned short lift_ovr_flags[] = {
     2,
@@ -9464,6 +9479,9 @@ const unsigned short lift_ovr_flags[] = {
     48896,
     65280,
     62208,
+    48896,
+    48896,
+    48896,
     48896,
     48896,
     48896,
@@ -11176,6 +11194,9 @@ const unsigned lift_ovr_ids[] = {
     0x400085u,
     0x4000b3u,
     0x400566u,
+    0x2201a0cu,
+    0x2201ffbu,
+    0x220200au,
     0 };
 const unsigned lift_text_id[] = {
     0x200000u,
@@ -18461,6 +18482,7 @@ const unsigned lift_sym_addr[] = {
     0x34037d70u,
     0x34037d71u,
     0x34037d72u,
+    0x34037db5u,
     0x34037dd0u,
     0x34037e50u,
     0x34037e5cu,
@@ -21180,6 +21202,7 @@ const char *const lift_sym_name[] = {
     "C4ObjSelec",
     "C4SObjSelec",
     "C4Pause",
+    "C4Temp",
     "SprValAdd",
     "C4values",
     "BWUsed2",
@@ -23124,4 +23147,4 @@ const char *const lift_sym_name[] = {
     "zcfgdir",
     "_cchar",
     0 };
-const int lift_sym_count = 2717;
+const int lift_sym_count = 2718;

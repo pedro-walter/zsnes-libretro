@@ -32,3 +32,10 @@ processmode7hires16b
 processmode7hires16bd
 drawmode7ngextbg16b
 drawmode7ngextbg216b
+cpu/memory.ao:WireFrameB
+cpu/memory.ao:WireFrameB2
+cpu/memory.ao:C4SprScaleR
+cpu/memory.ao:C4SprRotateR
+cpu/memory.ao:C4SprDisintegrate
+cpu/memory.ao:C4BitPlaneWave
+cpu/memory.ao:C4WireFrame
