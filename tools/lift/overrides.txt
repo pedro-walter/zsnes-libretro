@@ -1728,3 +1728,7 @@ SA1RAMaccessbankr8 zl_SA1RAMaccessbankr8 cmp=eax,ecx,ebx,edx,esi,edi
 SA1RAMaccessbankr16 zl_SA1RAMaccessbankr16 cmp=eax,ecx,ebx,edx,esi,edi
 SA1RAMaccessbankw8 zl_SA1RAMaccessbankw8 cmp=eax,ecx,ebx,edx,esi,edi
 SA1RAMaccessbankw16 zl_SA1RAMaccessbankw16 cmp=eax,ecx,ebx,edx,esi,edi
+drawbg1tile16b zl_drawbg1tile16b tail cmp=eax,ecx,ebx,edx,esi,edi
+drawbg2tile16b zl_drawbg2tile16b tail cmp=eax,ecx,ebx,edx,esi,edi
+drawbg3tile16b zl_drawbg3tile16b tail cmp=eax,ecx,ebx,edx,esi,edi
+drawbg4tile16b zl_drawbg4tile16b tail cmp=eax,ecx,ebx,edx,esi,edi

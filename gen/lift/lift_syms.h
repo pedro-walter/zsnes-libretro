@@ -7906,3 +7906,7 @@
 #define ZOVR_zl_SA1RAMaccessbankr16 ((0x7Cu << 21) | 1726u)
 #define ZOVR_zl_SA1RAMaccessbankw8 ((0x7Cu << 21) | 1727u)
 #define ZOVR_zl_SA1RAMaccessbankw16 ((0x7Cu << 21) | 1728u)
+#define ZOVR_zl_drawbg1tile16b ((0x7Cu << 21) | 1729u)
+#define ZOVR_zl_drawbg2tile16b ((0x7Cu << 21) | 1730u)
+#define ZOVR_zl_drawbg3tile16b ((0x7Cu << 21) | 1731u)
+#define ZOVR_zl_drawbg4tile16b ((0x7Cu << 21) | 1732u)

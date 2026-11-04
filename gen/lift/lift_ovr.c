@@ -2689,6 +2689,10 @@ void zl_SA1RAMaccessbankw8(void);
 static u32 ovw_zl_SA1RAMaccessbankw8(void) { zl_SA1RAMaccessbankw8(); return 0; }
 void zl_SA1RAMaccessbankw16(void);
 static u32 ovw_zl_SA1RAMaccessbankw16(void) { zl_SA1RAMaccessbankw16(); return 0; }
+u32 zl_drawbg1tile16b(void);
+u32 zl_drawbg2tile16b(void);
+u32 zl_drawbg3tile16b(void);
+u32 zl_drawbg4tile16b(void);
 u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_wdsp00,
     ovw_zl_wdsp01,
@@ -4419,6 +4423,10 @@ u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_SA1RAMaccessbankr16,
     ovw_zl_SA1RAMaccessbankw8,
     ovw_zl_SA1RAMaccessbankw16,
+    zl_drawbg1tile16b,
+    zl_drawbg2tile16b,
+    zl_drawbg3tile16b,
+    zl_drawbg4tile16b,
     0 };
 const char *const lift_ovr_names[] = {
     "WDSPReg00",
@@ -6150,8 +6158,12 @@ const char *const lift_ovr_names[] = {
     "SA1RAMaccessbankr16",
     "SA1RAMaccessbankw8",
     "SA1RAMaccessbankw16",
+    "drawbg1tile16b",
+    "drawbg2tile16b",
+    "drawbg3tile16b",
+    "drawbg4tile16b",
     0 };
-const int lift_ovr_count = 1729;
+const int lift_ovr_count = 1733;
 const char *const lift_ovr_cnames[] = {
     "zl_wdsp00",
     "zl_wdsp01",
@@ -7882,6 +7894,10 @@ const char *const lift_ovr_cnames[] = {
     "zl_SA1RAMaccessbankr16",
     "zl_SA1RAMaccessbankw8",
     "zl_SA1RAMaccessbankw16",
+    "zl_drawbg1tile16b",
+    "zl_drawbg2tile16b",
+    "zl_drawbg3tile16b",
+    "zl_drawbg4tile16b",
     0 };
 const unsigned short lift_ovr_flags[] = {
     2,
@@ -9613,6 +9629,10 @@ const unsigned short lift_ovr_flags[] = {
     48896,
     48896,
     48896,
+    48897,
+    48897,
+    48897,
+    48897,
     0 };
 const unsigned lift_ovr_ids[] = {
     0x1a00610u,
@@ -11344,6 +11364,10 @@ const unsigned lift_ovr_ids[] = {
     0x2203e71u,
     0x2203e84u,
     0x2203e96u,
+    0x7805fc9u,
+    0x78064f0u,
+    0x7806a3bu,
+    0x7806f86u,
     0 };
 const unsigned lift_text_id[] = {
     0x200000u,

@@ -5762,6 +5762,7 @@ L5fb0:
     M32((u32)(0x341e2094u))=0x0u;
     pc=M32(esp); esp+=4; goto dispatch;
 L5fc9:
+    OVR_GUARD(1729)
     M8((u32)(ebx + 0x34087e60u))=0x1u;
     M32((u32)(0x341e24dcu))=0x0u;
     M32((u32)(0x341e24d8u))=0x0u;
@@ -6094,6 +6095,7 @@ L64e1:
     pc=M32(esp); esp+=4; goto dispatch;
     pc=M32(esp); esp+=4; goto dispatch;
 L64f0:
+    OVR_GUARD(1730)
     M8((u32)(ebx + 0x34087d60u))=0x1u;
     M32((u32)(0x341e24dcu))=0x0u;
     M32((u32)(0x341e24d8u))=0x1u;
@@ -6426,6 +6428,7 @@ L6a29:
     pc=M32(esp); esp+=4; goto dispatch;
     pc=M32(esp); esp+=4; goto dispatch;
 L6a3b:
+    OVR_GUARD(1731)
     M8((u32)(ebx + 0x34087f60u))=0x1u;
     M32((u32)(0x341e24dcu))=0x0u;
     M32((u32)(0x341e24d8u))=0x2u;
@@ -6758,6 +6761,7 @@ L6f74:
     pc=M32(esp); esp+=4; goto dispatch;
     pc=M32(esp); esp+=4; goto dispatch;
 L6f86:
+    OVR_GUARD(1732)
     M8((u32)(ebx + 0x34087d60u))=0x1u;
     M32((u32)(0x341e24dcu))=0x0u;
     M32((u32)(0x341e24d8u))=0x3u;
