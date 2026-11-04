@@ -2657,6 +2657,38 @@ void zl_OBCReadReg(void);
 static u32 ovw_zl_OBCReadReg(void) { zl_OBCReadReg(); return 0; }
 void zl_OBCWriteReg(void);
 static u32 ovw_zl_OBCWriteReg(void) { zl_OBCWriteReg(); return 0; }
+void zl_membank0r8ramSA1(void);
+static u32 ovw_zl_membank0r8ramSA1(void) { zl_membank0r8ramSA1(); return 0; }
+void zl_membank0r16ramSA1(void);
+static u32 ovw_zl_membank0r16ramSA1(void) { zl_membank0r16ramSA1(); return 0; }
+void zl_membank0w8ramSA1(void);
+static u32 ovw_zl_membank0w8ramSA1(void) { zl_membank0w8ramSA1(); return 0; }
+void zl_membank0w16ramSA1(void);
+static u32 ovw_zl_membank0w16ramSA1(void) { zl_membank0w16ramSA1(); return 0; }
+void zl_membank0r8SA1(void);
+static u32 ovw_zl_membank0r8SA1(void) { zl_membank0r8SA1(); return 0; }
+void zl_membank0r16SA1(void);
+static u32 ovw_zl_membank0r16SA1(void) { zl_membank0r16SA1(); return 0; }
+void zl_membank0w8SA1(void);
+static u32 ovw_zl_membank0w8SA1(void) { zl_membank0w8SA1(); return 0; }
+void zl_membank0w16SA1(void);
+static u32 ovw_zl_membank0w16SA1(void) { zl_membank0w16SA1(); return 0; }
+void zl_regaccessbankr8SA1(void);
+static u32 ovw_zl_regaccessbankr8SA1(void) { zl_regaccessbankr8SA1(); return 0; }
+void zl_regaccessbankr16SA1(void);
+static u32 ovw_zl_regaccessbankr16SA1(void) { zl_regaccessbankr16SA1(); return 0; }
+void zl_regaccessbankw8SA1(void);
+static u32 ovw_zl_regaccessbankw8SA1(void) { zl_regaccessbankw8SA1(); return 0; }
+void zl_regaccessbankw16SA1(void);
+static u32 ovw_zl_regaccessbankw16SA1(void) { zl_regaccessbankw16SA1(); return 0; }
+void zl_SA1RAMaccessbankr8(void);
+static u32 ovw_zl_SA1RAMaccessbankr8(void) { zl_SA1RAMaccessbankr8(); return 0; }
+void zl_SA1RAMaccessbankr16(void);
+static u32 ovw_zl_SA1RAMaccessbankr16(void) { zl_SA1RAMaccessbankr16(); return 0; }
+void zl_SA1RAMaccessbankw8(void);
+static u32 ovw_zl_SA1RAMaccessbankw8(void) { zl_SA1RAMaccessbankw8(); return 0; }
+void zl_SA1RAMaccessbankw16(void);
+static u32 ovw_zl_SA1RAMaccessbankw16(void) { zl_SA1RAMaccessbankw16(); return 0; }
 u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_wdsp00,
     ovw_zl_wdsp01,
@@ -4371,6 +4403,22 @@ u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_OBCRegs,
     ovw_zl_OBCReadReg,
     ovw_zl_OBCWriteReg,
+    ovw_zl_membank0r8ramSA1,
+    ovw_zl_membank0r16ramSA1,
+    ovw_zl_membank0w8ramSA1,
+    ovw_zl_membank0w16ramSA1,
+    ovw_zl_membank0r8SA1,
+    ovw_zl_membank0r16SA1,
+    ovw_zl_membank0w8SA1,
+    ovw_zl_membank0w16SA1,
+    ovw_zl_regaccessbankr8SA1,
+    ovw_zl_regaccessbankr16SA1,
+    ovw_zl_regaccessbankw8SA1,
+    ovw_zl_regaccessbankw16SA1,
+    ovw_zl_SA1RAMaccessbankr8,
+    ovw_zl_SA1RAMaccessbankr16,
+    ovw_zl_SA1RAMaccessbankw8,
+    ovw_zl_SA1RAMaccessbankw16,
     0 };
 const char *const lift_ovr_names[] = {
     "WDSPReg00",
@@ -6086,8 +6134,24 @@ const char *const lift_ovr_names[] = {
     "cpu/memory.ao:OBCRegs",
     "cpu/memory.ao:OBCReadReg",
     "cpu/memory.ao:OBCWriteReg",
+    "membank0r8ramSA1",
+    "membank0r16ramSA1",
+    "membank0w8ramSA1",
+    "membank0w16ramSA1",
+    "membank0r8SA1",
+    "membank0r16SA1",
+    "membank0w8SA1",
+    "membank0w16SA1",
+    "regaccessbankr8SA1",
+    "regaccessbankr16SA1",
+    "regaccessbankw8SA1",
+    "regaccessbankw16SA1",
+    "SA1RAMaccessbankr8",
+    "SA1RAMaccessbankr16",
+    "SA1RAMaccessbankw8",
+    "SA1RAMaccessbankw16",
     0 };
-const int lift_ovr_count = 1713;
+const int lift_ovr_count = 1729;
 const char *const lift_ovr_cnames[] = {
     "zl_wdsp00",
     "zl_wdsp01",
@@ -7802,6 +7866,22 @@ const char *const lift_ovr_cnames[] = {
     "zl_OBCRegs",
     "zl_OBCReadReg",
     "zl_OBCWriteReg",
+    "zl_membank0r8ramSA1",
+    "zl_membank0r16ramSA1",
+    "zl_membank0w8ramSA1",
+    "zl_membank0w16ramSA1",
+    "zl_membank0r8SA1",
+    "zl_membank0r16SA1",
+    "zl_membank0w8SA1",
+    "zl_membank0w16SA1",
+    "zl_regaccessbankr8SA1",
+    "zl_regaccessbankr16SA1",
+    "zl_regaccessbankw8SA1",
+    "zl_regaccessbankw16SA1",
+    "zl_SA1RAMaccessbankr8",
+    "zl_SA1RAMaccessbankr16",
+    "zl_SA1RAMaccessbankw8",
+    "zl_SA1RAMaccessbankw16",
     0 };
 const unsigned short lift_ovr_flags[] = {
     2,
@@ -9504,6 +9584,22 @@ const unsigned short lift_ovr_flags[] = {
     48896,
     65280,
     62208,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
     48896,
     48896,
     48896,
@@ -11232,6 +11328,22 @@ const unsigned lift_ovr_ids[] = {
     0x220094au,
     0x2200a07u,
     0x2200a16u,
+    0x220289eu,
+    0x22028cau,
+    0x22028f9u,
+    0x2202922u,
+    0x2203167u,
+    0x220325cu,
+    0x22033b9u,
+    0x22034b3u,
+    0x220396bu,
+    0x2203a61u,
+    0x2203bbfu,
+    0x2203cd3u,
+    0x2203e5fu,
+    0x2203e71u,
+    0x2203e84u,
+    0x2203e96u,
     0 };
 const unsigned lift_text_id[] = {
     0x200000u,

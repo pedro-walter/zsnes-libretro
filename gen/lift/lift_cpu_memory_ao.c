@@ -3017,6 +3017,7 @@ L2891:
     if (!zf) {goto L2891;}
     pc=M32(esp); esp+=4; goto dispatch;
 L289e:
+    OVR_GUARD(1713)
     {u8 a_=M8((u32)(0x34004780u)), b_=0x0u, r=(u8)(a_-b_);  cf=a_<b_; zf=!r;}
     if (!zf) {goto L28b3;}
     eax=(eax&0xFFFFFF00u)|(u8)(M8((u32)(ecx + ebx + 0x3404de30u)));
@@ -3030,6 +3031,7 @@ L28c7:
     {u8 a_=(u8)eax, b_=(u8)eax, r=(u8)(a_^b_); eax=(eax&0xFFFFFF00u)|(u8)(r); cf=0;}
     pc=M32(esp); esp+=4; goto dispatch;
 L28ca:
+    OVR_GUARD(1714)
     {u8 a_=M8((u32)(0x34004780u)), b_=0x0u, r=(u8)(a_-b_);  cf=a_<b_; zf=!r;}
     if (!zf) {goto L28e0;}
     eax=(eax&0xFFFF0000u)|(u16)(M16((u32)(ecx + ebx + 0x3404de30u)));
@@ -3043,6 +3045,7 @@ L28f5:
     {u16 a_=(u16)eax, b_=(u16)eax, r=(u16)(a_^b_); eax=(eax&0xFFFF0000u)|(u16)(r); cf=0;}
     pc=M32(esp); esp+=4; goto dispatch;
 L28f9:
+    OVR_GUARD(1715)
     {u8 a_=M8((u32)(0x34004780u)), b_=0x0u, r=(u8)(a_-b_);  cf=a_<b_; zf=!r;}
     if (!zf) {goto L290e;}
     M8((u32)(ecx + ebx + 0x3404de30u))=(u8)eax;
@@ -3054,6 +3057,7 @@ L290e:
 L2921:
     pc=M32(esp); esp+=4; goto dispatch;
 L2922:
+    OVR_GUARD(1716)
     {u8 a_=M8((u32)(0x34004780u)), b_=0x0u, r=(u8)(a_-b_);  cf=a_<b_; zf=!r;}
     if (!zf) {goto L2938;}
     M16((u32)(ecx + ebx + 0x3404de30u))=(u16)eax;
@@ -3825,6 +3829,7 @@ L314c:
     {u32 v_=M32(esp); esp+=4; ecx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L3167:
+    OVR_GUARD(1717)
     {u32 a_=ecx, b_=0x8000u, r=(u32)(a_&b_);  zf=!r;}
     if (zf) {goto L317f;}
     ebx=M32((u32)(0x3407c240u));
@@ -3908,6 +3913,7 @@ L3233:
     {u32 v_=M32(esp); esp+=4; ecx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L325c:
+    OVR_GUARD(1718)
     {u32 a_=ecx, b_=0x8000u, r=(u32)(a_&b_);  zf=!r;}
     if (zf) {goto L3275;}
     ebx=M32((u32)(0x3407c240u));
@@ -4037,6 +4043,7 @@ L3367:
     {u32 v_=M32(esp); esp+=4; ecx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L33b9:
+    OVR_GUARD(1719)
     {u32 a_=ecx, b_=0x8000u, r=(u32)(a_&b_);  cf=0; zf=!r;}
     if (!zf) {goto L33f8;}
     {u32 a_=ecx, b_=0x2000u, r=(u32)(a_-b_);  cf=a_<b_;}
@@ -4126,6 +4133,7 @@ L3481:
     {u32 v_=M32(esp); esp+=4; ecx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L34b3:
+    OVR_GUARD(1720)
     {u32 a_=ecx, b_=0x8000u, r=(u32)(a_&b_);  cf=0; zf=!r;}
     if (!zf) {goto L34f4;}
     {u32 a_=ecx, b_=0x2000u, r=(u32)(a_-b_);  cf=a_<b_;}
@@ -4591,6 +4599,7 @@ L3959:
     FLUSH(); return 0x4a00ab8u;
     pc=M32(esp); esp+=4; goto dispatch;
 L396b:
+    OVR_GUARD(1721)
     {u32 a_=ecx, b_=0x8000u, r=(u32)(a_&b_);  zf=!r;}
     if (zf) {goto L3984;}
     ebx=M32((u32)(ebx*4 + 0x3407c240u));
@@ -4674,6 +4683,7 @@ L3a38:
     {u32 v_=M32(esp); esp+=4; ecx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L3a61:
+    OVR_GUARD(1722)
     {u32 a_=ecx, b_=0x8000u, r=(u32)(a_&b_);  zf=!r;}
     if (zf) {goto L3a7b;}
     ebx=M32((u32)(ebx*4 + 0x3407c240u));
@@ -4803,6 +4813,7 @@ L3b6d:
     {u32 v_=M32(esp); esp+=4; ecx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L3bbf:
+    OVR_GUARD(1723)
     {u32 a_=ecx, b_=0x8000u, r=(u32)(a_&b_);  zf=!r;}
     if (!zf) {goto L3bfe;}
     {u32 a_=ecx, b_=0x2000u, r=(u32)(a_-b_);  cf=a_<b_;}
@@ -4899,6 +4910,7 @@ L3ca1:
     {u32 v_=M32(esp); esp+=4; ecx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L3cd3:
+    OVR_GUARD(1724)
     {u32 a_=ecx, b_=0x8000u, r=(u32)(a_&b_);  zf=!r;}
     if (!zf) {goto L3d14;}
     {u32 a_=ecx, b_=0x2000u, r=(u32)(a_-b_);  cf=a_<b_;}
@@ -5052,6 +5064,7 @@ L3df8:
     {u32 v_=M32(esp); esp+=4; ecx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L3e5f:
+    OVR_GUARD(1725)
     {u32 a_=ebx, b_=0x3u, r=(u32)(a_&b_); ebx=r; }
     {u32 a_=ebx; const u32 c_=16; {u64 t_=(u64)a_<<c_; u32 r=(u32)t_; ebx=r; }}
     {u32 a_=ebx, b_=M32((u32)(0x340052fbu)), r=(u32)(a_+b_); ebx=r; }
@@ -5059,6 +5072,7 @@ L3e5f:
     {u32 a_=ebx, b_=ebx, r=(u32)(a_^b_); ebx=r; cf=0;}
     pc=M32(esp); esp+=4; goto dispatch;
 L3e71:
+    OVR_GUARD(1726)
     {u32 a_=ebx, b_=0x3u, r=(u32)(a_&b_); ebx=r; }
     {u32 a_=ebx; const u32 c_=16; {u64 t_=(u64)a_<<c_; u32 r=(u32)t_; ebx=r; }}
     {u32 a_=ebx, b_=M32((u32)(0x340052fbu)), r=(u32)(a_+b_); ebx=r; }
@@ -5066,6 +5080,7 @@ L3e71:
     {u32 a_=ebx, b_=ebx, r=(u32)(a_^b_); ebx=r; cf=0;}
     pc=M32(esp); esp+=4; goto dispatch;
 L3e84:
+    OVR_GUARD(1727)
     {u32 a_=ebx, b_=0x3u, r=(u32)(a_&b_); ebx=r; }
     {u32 a_=ebx; const u32 c_=16; {u64 t_=(u64)a_<<c_; u32 r=(u32)t_; ebx=r; }}
     {u32 a_=ebx, b_=M32((u32)(0x340052fbu)), r=(u32)(a_+b_); ebx=r; }
@@ -5073,6 +5088,7 @@ L3e84:
     {u32 a_=ebx, b_=ebx, r=(u32)(a_^b_); ebx=r; cf=0;}
     pc=M32(esp); esp+=4; goto dispatch;
 L3e96:
+    OVR_GUARD(1728)
     {u32 a_=ebx, b_=0x3u, r=(u32)(a_&b_); ebx=r; }
     {u32 a_=ebx; const u32 c_=16; {u64 t_=(u64)a_<<c_; u32 r=(u32)t_; ebx=r; }}
     {u32 a_=ebx, b_=M32((u32)(0x340052fbu)), r=(u32)(a_+b_); ebx=r; }

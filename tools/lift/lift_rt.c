@@ -317,7 +317,7 @@ __attribute__((destructor)) static void prof_dump(void)
 {
     const char *e = getenv("LIFT_PROF"); if (!e) return;
     for (int i = 0; i < 128; i++) if (prof[i]) fprintf(stderr, "PROF %s %llu\n", oname((u32)i << 21), prof[i]);
-    if (atoi(e) >= 2) { int i; qsort(prof2, PROFN, sizeof prof2[0], prof_cmp); for (i = 0; i < 60 && prof2[i].n; i++) { u32 off; const char *n = text_name(prof2[i].pc, &off); fprintf(stderr, "PROFPC %s+0x%x %llu\n", n, off, prof2[i].n); } }
+    if (atoi(e) >= 2) { int i; qsort(prof2, PROFN, sizeof prof2[0], prof_cmp); for (i = 0; i < (getenv("LIFT_PROF_TOP") ? atoi(getenv("LIFT_PROF_TOP")) : 60) && i < PROFN && prof2[i].n; i++) { u32 off; const char *n = text_name(prof2[i].pc, &off); fprintf(stderr, "PROFPC %s+0x%x %llu\n", n, off, prof2[i].n); } }
 }
 int lift_orig, lift_once;
 int zl_ovr_off(const char *cname)

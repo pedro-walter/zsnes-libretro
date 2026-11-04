@@ -361,3 +361,112 @@ void zl_UpdateDPage(void)
     u32 hi = xd[1];
     DPageR8 = Bank0datr8[hi]; DPageR16 = Bank0datr16[hi]; DPageW8 = Bank0datw8[hi]; DPageW16 = Bank0datw16[hi];
 }
+
+/* ---------------- SA-1 CPU/SNES-side banks ----------------
+ * The BW-RAM bitmap modes (BWShift != 0 while the SA-1 runs: the BWCheck2* macros of the asm) fall back to the original body. */
+#define SA1Status (*(u8 *)0x34004780u)
+#define BWShift (*(u8 *)0x340048bau)
+#define CurBWPtr (*(u32 *)0x3400485eu)
+#define SA1RAMArea (*(u32 *)0x340052fbu)
+#define IRAMB(i) M8(A(IRAM) + (i))
+#define IRAMW(i) M16(A(IRAM) + (i))
+#define BWFAST (BWShift == 0 || SA1Status == 0)
+
+void zl_membank0r8ramSA1(void)
+{
+    if (SA1Status == 0) { set_al(M8(A(wramdataa) + ECX + EBX)); return; }
+    if (ECX >= 0x800) { set_al(0); return; }
+    set_al(M8(A(IRAM) + ECX + EBX));
+}
+void zl_membank0r16ramSA1(void)
+{
+    if (SA1Status == 0) { set_ax(M16(A(wramdataa) + ECX + EBX)); return; }
+    if (ECX >= 0x800) { set_ax(0); return; }
+    set_ax(M16(A(IRAM) + ECX + EBX));
+}
+void zl_membank0w8ramSA1(void)
+{
+    if (SA1Status == 0) { M8(A(wramdataa) + ECX + EBX) = (u8)EAX; return; }
+    if (ECX < 0x800) M8(A(IRAM) + ECX + EBX) = (u8)EAX;
+}
+void zl_membank0w16ramSA1(void)
+{
+    if (SA1Status == 0) { M16(A(wramdataa) + ECX + EBX) = (u16)EAX; return; }
+    if (ECX < 0x800) M16(A(IRAM) + ECX + EBX) = (u16)EAX;
+}
+
+static void sa1_r8(int regacc, u32 selfid)
+{
+    if (ECX & 0x8000) { EBX = regacc ? snesmmap[EBX] : snesmmap[0]; set_al(M8(EBX + ECX)); EBX = 0; return; }
+    if (ECX < 0x2000) {
+        if (SA1Status == 0) { set_al(WRAM(ECX)); return; }
+        set_al(ECX < 0x800 ? IRAMB(ECX) : 0); return;
+    }
+    if (ECX <= 0x48FF) { zl_mcall(REGPTRA(ECX)); EBX = 0; return; }
+    if (ECX < 0x6000) { set_al(0); return; }
+    if (!BWFAST) { zl_orig(selfid); return; }
+    EBX = CurBWPtr; set_al(M8(EBX + ECX)); EBX = 0;
+}
+static void sa1_r16(int regacc, u32 selfid)
+{
+    if (ECX & 0x8000) { EBX = regacc ? snesmmap[EBX] : snesmmap[0]; set_ax(M16(EBX + ECX)); EBX = 0; return; }
+    if (ECX < 0x2000) {
+        if (SA1Status == 0) { set_ax(WRAM16(ECX)); return; }
+        set_ax(ECX < 0x800 ? IRAMW(ECX) : 0); return;
+    }
+    if (ECX <= 0x48FF) {
+        zl_mcall(REGPTRA(ECX)); ECX++; set_ah(get_al()); zl_mcall(REGPTRA(ECX));
+        set_bl(get_al()); ECX--; set_al(get_ah()); set_ah(EBX); EBX = 0; return;
+    }
+    if (ECX < 0x6000) { set_ax(0); return; }
+    if (!BWFAST) { zl_orig(selfid); return; }
+    EBX = CurBWPtr; set_ax(M16(EBX + ECX)); EBX = 0;
+}
+static void sa1_w8(int regacc, u32 selfid)
+{
+    if (ECX & 0x8000) {
+        if (!regacc) return;
+        if (writeon != 0) { EBX = snesmmap[EBX]; M8(EBX + ECX) = (u8)EAX; EBX = 0; }
+        return;
+    }
+    if (ECX < 0x2000) {
+        if (SA1Status == 0) { WRAM(ECX) = (u8)EAX; return; }
+        if (ECX < 0x800) IRAMB(ECX) = (u8)EAX;
+        return;
+    }
+    if (ECX <= 0x48FF) { zl_mcall(REGPTWA(ECX)); EBX = 0; return; }
+    if (ECX < 0x6000) return;
+    if (!BWFAST) { zl_orig(selfid); return; }
+    EBX = CurBWPtr; M8(EBX + ECX) = (u8)EAX; EBX = 0;
+}
+static void sa1_w16(int regacc, u32 selfid)
+{
+    if (ECX & 0x8000) {
+        if (!regacc) return;
+        if (writeon != 0) { EBX = snesmmap[EBX]; M16(EBX + ECX) = (u16)EAX; EBX = 0; }
+        return;
+    }
+    if (ECX < 0x2000) {
+        if (SA1Status == 0) { WRAM16(ECX) = (u16)EAX; return; }
+        if (ECX < 0x800) IRAMW(ECX) = (u16)EAX;
+        return;
+    }
+    if ((ECX & 0xFFFF) <= 0x48FF) { zl_mcall(REGPTWA(ECX)); ECX++; set_al(get_ah()); zl_mcall(REGPTWA(ECX)); ECX--; EBX = 0; return; }
+    if (ECX < 0x6000) return;
+    if (!BWFAST) { zl_orig(selfid); return; }
+    EBX = CurBWPtr; M16(EBX + ECX) = (u16)EAX; EBX = 0;
+}
+void zl_membank0r8SA1(void) { sa1_r8(0, ZID_membank0r8SA1); }
+void zl_membank0r16SA1(void) { sa1_r16(0, ZID_membank0r16SA1); }
+void zl_membank0w8SA1(void) { sa1_w8(0, ZID_membank0w8SA1); }
+void zl_membank0w16SA1(void) { sa1_w16(0, ZID_membank0w16SA1); }
+void zl_regaccessbankr8SA1(void) { sa1_r8(1, ZID_regaccessbankr8SA1); }
+void zl_regaccessbankr16SA1(void) { sa1_r16(1, ZID_regaccessbankr16SA1); }
+void zl_regaccessbankw8SA1(void) { sa1_w8(1, ZID_regaccessbankw8SA1); }
+void zl_regaccessbankw16SA1(void) { sa1_w16(1, ZID_regaccessbankw16SA1); }
+
+static u32 sa1ram_base(void) { return ((EBX & 3) << 16) + SA1RAMArea; }
+void zl_SA1RAMaccessbankr8(void) { EBX = sa1ram_base(); set_al(M8(EBX + ECX)); EBX = 0; }
+void zl_SA1RAMaccessbankr16(void) { EBX = sa1ram_base(); set_ax(M16(EBX + ECX)); EBX = 0; }
+void zl_SA1RAMaccessbankw8(void) { EBX = sa1ram_base(); M8(EBX + ECX) = (u8)EAX; EBX = 0; }
+void zl_SA1RAMaccessbankw16(void) { EBX = sa1ram_base(); M16(EBX + ECX) = (u16)EAX; EBX = 0; }
