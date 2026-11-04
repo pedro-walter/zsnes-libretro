@@ -104,7 +104,7 @@ register-RAM glue (`core/zl/c4.c`, `tools/mkrom_c4.py`; the sprite/wireframe/sca
 
 Still lifted asm (no hand-written C yet): SPC7110 (needs data files / ROM hacks), the C4 sprite/wireframe engines, the new-engine renderer
 proper (`StartDrawNewGfx16b`, the tile/line/sprite drawers: ~13k lines of macros) and the old per-line engine (only Stunt Race FX uses it),
-the remainder of `execute.asm`, the opcode-table builders, init and UI glue.  (DSP-3/4, ST018 and SPC7110 chips are not emulated by ZSNES
+the remainder of `execute.asm`, the opcode-table builders, init and UI glue.  (DSP-3, DSP-4 and ST018 are only detected, not emulated, by ZSNES
 1.42 itself, so there is nothing to port for them.)  Games with a real-time clock (Daikaijuu Monogatari II, Tengai Makyou Zero) read the wall
 clock, so two runs only match frame-for-frame if they read the same seconds.
 
