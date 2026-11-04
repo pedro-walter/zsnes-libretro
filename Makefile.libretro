@@ -1,0 +1,72 @@
+# ZSNES 1.42 libretro core -- self-contained build from the committed sources in gen/ (needs only gcc and make).
+#   make -f Makefile.libretro [platform=unix|win|...] [ARCH=...]   ->  zsnes_libretro.so / zsnes_libretro.dll
+# Regenerating gen/ from the pristine asm needs the extra tools described in README.md (Makefile.lift gen / gendist).
+TARGET_NAME := zsnes_libretro
+CC ?= gcc
+ifeq ($(CC),cc)
+CC := gcc
+endif
+MACH := $(shell $(CC) -dumpmachine 2>/dev/null)
+ifeq ($(platform),)
+  ifneq ($(findstring mingw,$(MACH))$(findstring windows,$(MACH)),)
+    platform := win
+  else ifeq ($(OS),Windows_NT)
+    platform := win
+  else
+    platform := unix
+  endif
+endif
+# the guest address space is 32-bit-pointer based on 32-bit hosts and 64-bit based otherwise
+ifneq ($(findstring x86_64,$(MACH))$(findstring aarch64,$(MACH))$(findstring arm64,$(MACH)),)
+  BITS := 64
+else
+  BITS := 32
+endif
+OSDEF   := -D__LINUX__
+LDLIBS  := -lm
+SYMLD   := gen/lift/lift_syms.ld
+EXT     := so
+ifeq ($(platform),win)
+  OSDEF  := -D__WIN32__ -Ilibretro/shim -include sys/stat.h -include dirent.h
+  LDLIBS := -lm -lws2_32 -static-libgcc
+  EXT    := dll
+  ifeq ($(BITS),32)
+    SYMLD := gen/lift/lift_syms_u.ld
+  endif
+endif
+ifneq ($(BITS_FORCE),)
+  BITS := $(BITS_FORCE)
+endif
+OPT ?= -O1
+O   := obj/$(platform)$(BITS)
+CFL := $(OPT) -ffp-contract=off -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 \
+       -Igen/lift -Itools/lift -Ilibretro -Icore $(OSDEF) -DNO_PNG -DLIFTED $(CFLAGS)
+CSH := -include tools/lift/lift_cdefs.h -Icore -Icore/linux -Icore/chips -Icore/cpu -Icore/effects
+
+LIFTC := $(wildcard gen/lift/lift_*.c)
+LOBJ  := $(patsubst gen/lift/%.c,$(O)/%.o,$(LIFTC))
+COBJ  := $(patsubst gen/c/%.c,$(O)/c/%.o,$(wildcard gen/c/*.c))
+HOBJ  := $(patsubst gen/h/%.c,$(O)/h/%.o,$(wildcard gen/h/*.c))
+OBJS  := $(LOBJ) $(O)/lift_rt.o $(O)/lift_data_inc.o $(COBJ) $(HOBJ)
+
+all: $(TARGET_NAME).$(EXT)
+$(TARGET_NAME).$(EXT): $(OBJS) $(SYMLD)
+	$(CC) -shared -o $@ $(OBJS) $(SYMLD) $(LDLIBS)
+$(O)/lift_%.o: gen/lift/lift_%.c gen/lift/lift.h
+	@mkdir -p $(O)
+	$(CC) $(CFL) -c -o $@ $<
+$(O)/lift_rt.o: tools/lift/lift_rt.c gen/lift/lift.h
+	@mkdir -p $(O)
+	$(CC) $(CFL) -c -o $@ $<
+$(O)/lift_data_inc.o: tools/lift/lift_data_inc.c gen/lift/lift_data.bin
+	@mkdir -p $(O)
+	$(CC) $(CFL) -c -o $@ $<
+$(O)/c/%.o: gen/c/%.c
+	@mkdir -p $(O)/c
+	$(CC) $(CFL) $(CSH) -c -o $@ $<
+$(O)/h/%.o: gen/h/%.c
+	@mkdir -p $(O)/h
+	$(CC) $(CFL) -Icore/zl -c -o $@ $<
+clean:
+	rm -rf obj $(TARGET_NAME).so $(TARGET_NAME).dll
+.PHONY: all clean

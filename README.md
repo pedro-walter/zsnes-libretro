@@ -12,6 +12,16 @@ Both are accepted only if `tools/timing_check.sh <rom> <core.so>` is identical t
 (`refs/zsnes_asm_ref.so`): per-frame WRAM trace, per-100-frame video CRC, audio CRC, and (for Top Gear (E)) the trace of
 the real, unmodified ZSNES executable (`refs/golden_topgear_e_zsnes_exe.txt`).
 
+## Building the core (what the libretro buildbot uses)
+
+`gen/` holds the lifted C and the hand-written modules after variable placement, committed so that a plain compiler is enough:
+
+    make -f Makefile.libretro -j8                              # Linux/Unix x86-64 or i386 (CC='gcc -m32'), aarch64, armhf: zsnes_libretro.so
+    make -f Makefile.libretro platform=win CC=x86_64-w64-mingw32-gcc -j8     # Windows: zsnes_libretro.dll (i686-w64-mingw32-gcc for 32-bit)
+
+The pointer size is taken from `$(CC) -dumpmachine`.  After changing anything under `core/zl`, `libretro/`, the shared C
+sources, or the lifter, run `make -f Makefile.lift gen gendist` (needs the tools below) and commit `gen/`.
+
 ## Building
 
 Needs `nasm`, `gcc` (with `-m32` support for the reference/asm objects: `gcc-multilib`), python3 with `capstone` and

@@ -7,3 +7,6 @@ __pycache__/
 /shot_*.png
 /zsnesl.cfg
 /rominfo.txt
+/obj/
+/zsnes_libretro.so
+/zsnes_libretro.dll

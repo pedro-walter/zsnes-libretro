@@ -94,3 +94,13 @@ distarm32:
 	$(MAKE) -f Makefile.lift CC=arm-linux-gnueabihf-gcc BITS=32 FPX= O=build/arm32 -j8
 	mkdir -p dist && cp build/arm32/zsnes_lifted.so dist/zsnes_libretro_armhf.so
 .PHONY: dist64 distwin64 distwin32 distarm64 distarm32
+
+# ---- self-contained sources for the libretro buildbot (Makefile.libretro needs only gcc + make) ----
+# Run after `gen` and whenever core/zl, libretro/ or the shared C sources change; commit the result (gen/).
+gendist:
+	rm -rf gen && mkdir -p gen/lift gen/c gen/h
+	cp $(L)/lift_*.c $(L)/lift_data.bin $(L)/lift_syms.h $(L)/lift_syms.ld $(L)/lift_syms_u.ld $(L)/lift_ext.h $(L)/lift.h $(L)/lift_mmx.h $(L)/sfx_tab.h gen/lift/
+	python3 tools/lift/cfix.py $(L)/lift_cvars.txt gen/c $(CSRCS)
+	python3 tools/lift/cfix.py $(L)/lift_cvars.txt gen/h $(HSRCS)
+	rm -f gen/c/cfixed.stamp gen/h/cfixed.stamp
+.PHONY: gendist
