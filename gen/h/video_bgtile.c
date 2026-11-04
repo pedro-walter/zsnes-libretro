@@ -135,6 +135,65 @@ u32 zl_drawbg2tilepr116b(void) { return bgtile_pr1(1); }
 u32 zl_drawbg3tilepr116b(void) { return bgtile_pr1(2); }
 u32 zl_drawbg4tilepr116b(void) { return bgtile_pr1(3); }
 
+/* the ".tiles16x8" path of drawbglineng16b (BGMA >= 5: hi-res modes): 16x8 tiles, no window processing */
+static u32 bgline_16x8(int bg)
+{
+    u32 b2 = EBX * 2 + bg * 512;
+    u32 eax, edx;
+    if (L8(A(t16x161) + EBX + bg * 256) != 1) {
+        S32(A(taddnfy16x16), 0); S32(A(taddfy16x16), 0);
+        eax = L32(A(BGPT1) + b2);
+        if (ECX & 0x100) eax += L32(A(BGPT1Y) + b2);
+        ECX *= 8; edx = ECX; ECX &= 0x7C0; edx &= 0x38;
+    } else {
+        S32(A(taddnfy16x16), 0); S32(A(taddfy16x16), 16);
+        if (ECX & 8) { S32(A(taddnfy16x16), 16); S32(A(taddfy16x16), (u32)-16); }
+        eax = L32(A(BGPT1) + b2);
+        if (ECX & 0x200) eax += L32(A(BGPT1Y) + b2);
+        edx = (ECX * 8) & 0x38; ECX = (ECX * 4) & 0x7C0;
+    }
+    S32(A(yposng), edx);
+    edx ^= 0x38;
+    eax += ECX;
+    S32(A(flipyposng), edx);
+    ECX = L32(A(BG1SXl) + b2);
+    ECX += ECX;
+    edx = L32(A(BGPT1X) + b2);
+    if (ECX & 0x200) { eax += edx; edx = (edx & 0xFFFF0000u) | (u16)(0 - (u16)edx); }
+    EDI = ECX;
+    edx = (edx & 0xFFFF0000u) | (u16)((u16)edx - 64);
+    ECX &= 0x1F0;
+    eax &= 0xFFFF;
+    ECX >>= 3;
+    S32(A(bgtxadd), edx);
+    L16(A(bgtxad) + b2) = (u16)edx;
+    eax += ECX;
+    ECX = L32(A(BGOPT1) + b2);
+    edx = L32(A(BGMA) + EBX);
+    EDI &= 0xF; edx &= 7; ECX &= 0xFFFF;
+    EDI >>= 1;
+    edx = L32(A(colormodedef) + edx * 4 + bg);
+    EDI = 0 - EDI; EDI += EDI;
+    u8 dl = (u8)edx;
+    u32 tgt, cshift;
+    if (dl == 2) { cshift = 5; tgt = ZID_drawlineng16x84b16b; }
+    else if (dl == 1) { cshift = 4; tgt = ZID_drawlineng16x82b16b; }
+    else { EAX = eax; EDX = edx; return 0; }            /* pop ebx; ret */
+    ECX >>= cshift;
+    EDI += ESI;
+    S32(A(ngptrdat) + bg * 1024 + EBX * 4, ECX);
+    S32(A(ngptrdat2), ECX);
+    S32(A(ngceax) + bg * 1024 + EBX * 4, eax);
+    S32(A(ngcedi) + bg * 1024 + EBX * 4, EDI);
+    EAX = eax;
+    if (dl == 1) S32(A(mode0add), 0);
+    S32(A(cbgval), (u32)bg);
+    ECX = EBX + bg * 256;
+    EDX = (edx & ~0xFFu) | (1u << bg);
+    LG.esp -= 4; S32(LG.esp, EBX);
+    return tgt;
+}
+
 /* drawbg1..4line16b: per-scanline variant.  The mosaic, offset-per-tile and 16x8 (hi-res) paths are rare; they run the original body. */
 static u32 bgline(int bg, u32 selfid)
 {
@@ -145,12 +204,13 @@ static u32 bgline(int bg, u32 selfid)
         if (bgma == 2) offsetm = 1;
         else if (L8(A(bgmode)) != 4 && bgma == 4) offsetm = 1;
     }
-    if (mosaic || bgma >= 5 || offsetm) { zl_orig(selfid); return 0; }
+    if (mosaic || offsetm) { zl_orig(selfid); return 0; }
     S32(A(ng16bprval), 0);
     S32(A(pesimpng), ESI);
     S32(A(ng16bbgval), (u32)bg);
     if (L8(A(bgmode)) >= 5 && (L8(A(intrlng) + EBX) & 1)) { ECX += EBX; ECX += L32(A(cfieldad)); }
     L8(A(curmosaicsz)) = 1;
+    if (bgma >= 5) return bgline_16x8(bg);
     int big = L8(A(osm2dis)) != 1 && L8(A(t16x161) + EBX + bg * 256) == 1;
     u32 yinc, mask_sx, shr_c, edimask;
     u32 b2 = EBX * 2 + bg * 512;
