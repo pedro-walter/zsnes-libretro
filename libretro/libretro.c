@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <sys/stat.h>
 #include "libretro.h"
 #ifdef _WIN32
@@ -200,7 +201,8 @@ size_t retro_get_memory_size(unsigned id)
 #ifdef LIFTED
 /* Cheats: Pro Action Replay style RAM codes ("7E1234AB", several lines separated by '+' or spaces).  They go into ZSNES's
  * cheat table (28-byte entries: flags, value, address16, bank), which the scheduler applies once per frame through the
- * bank write handlers.  Game Genie (ROM patch) codes are not supported. */
+ * bank write handlers.  Game Genie codes ("DF4B-3D0F") patch the ROM image through the current memory map and are undone
+ * when the cheat is disabled. */
 extern unsigned char cheatdata[];
 extern unsigned int NumCheats, CheatOn;
 #define CHEAT_SLOTS 128
@@ -208,6 +210,36 @@ extern unsigned int NumCheats, CheatOn;
 static struct { unsigned char val, bank; unsigned short addr; } cheat_line[CHEAT_SLOTS][CHEAT_LINES];
 static unsigned char cheat_nlines[CHEAT_SLOTS];
 static bool cheat_on[CHEAT_SLOTS];
+static struct { unsigned addr; unsigned char val; } gg_line[CHEAT_SLOTS];
+static bool gg_on[CHEAT_SLOTS];
+extern unsigned int snesmmap[256], romdata, NumofBytes;
+static struct { unsigned char *p; unsigned char orig; } gg_patched[CHEAT_SLOTS];
+static unsigned gg_npatched;
+
+/* Game Genie: 8 symbols from "DF4709156BC8A23E" -> value byte + scrambled 24-bit SNES address */
+static bool gg_decode(const char *code, unsigned *addr, unsigned char *val)
+{
+    static const char alpha[] = "DF4709156BC8A23E";
+    unsigned n[8], i, nn = 0, a;
+    for (; *code; code++) {
+        const char *q;
+        if (*code == '-' || *code == ' ') continue;
+        q = strchr(alpha, *code >= 'a' && *code <= 'z' ? *code - 32 : *code);
+        if (!q || !*code || nn == 8) return false;
+        n[nn++] = (unsigned)(q - alpha);
+    }
+    if (nn != 8) return false;
+    *val = (unsigned char)((n[0] << 4) | n[1]);
+    a = (n[2] << 20) | (n[3] << 16) | (n[4] << 12) | (n[5] << 8) | (n[6] << 4) | n[7];   /* abcd efgh ijkl mnop qrst uvwx */
+    {
+        unsigned ab = (a >> 22) & 3, cd = (a >> 20) & 3, ef = (a >> 18) & 3, gh = (a >> 16) & 3, ij = (a >> 14) & 3, kl = (a >> 12) & 3;
+        unsigned mn = (a >> 10) & 3, op = (a >> 8) & 3, qr = (a >> 6) & 3, st = (a >> 4) & 3, uv = (a >> 2) & 3, wx = a & 3;
+        (void)i;
+        /* address = ijkl qrst opab cduv wxef ghmn */
+        *addr = (ij << 22) | (kl << 20) | (qr << 18) | (st << 16) | (op << 14) | (ab << 12) | (cd << 10) | (uv << 8) | (wx << 6) | (ef << 4) | (gh << 2) | mn;
+    }
+    return true;
+}
 
 static int hexv(int c) { return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1; }
 
@@ -226,17 +258,34 @@ static void cheat_rebuild(void)
     }
     NumCheats = n;
     CheatOn = n ? 1 : 0;
+    /* Game Genie ROM patches: undo the old ones, then apply the enabled ones */
+    while (gg_npatched) { gg_npatched--; *gg_patched[gg_npatched].p = gg_patched[gg_npatched].orig; }
+    for (i = 0; i < CHEAT_SLOTS; i++) {
+        unsigned char *rb = (unsigned char *)(uintptr_t)romdata, *p;
+        unsigned m;
+        if (!gg_on[i]) continue;
+        m = snesmmap[gg_line[i].addr >> 16];
+        p = (unsigned char *)(uintptr_t)m + (gg_line[i].addr & 0xFFFF);
+        if (!m || p < rb || p >= rb + NumofBytes || gg_npatched >= CHEAT_SLOTS) continue;   /* not ROM */
+        gg_patched[gg_npatched].p = p; gg_patched[gg_npatched].orig = *p; gg_npatched++;
+        *p = gg_line[i].val;
+    }
 }
 
 void retro_cheat_reset(void)
 {
-    memset(cheat_nlines, 0, sizeof cheat_nlines); memset(cheat_on, 0, sizeof cheat_on);
+    memset(cheat_nlines, 0, sizeof cheat_nlines); memset(cheat_on, 0, sizeof cheat_on); memset(gg_on, 0, sizeof gg_on);
     cheat_dirty = true;
 }
 void retro_cheat_set(unsigned idx, bool enabled, const char *code)
 {
     unsigned digits[8], nd = 0, nl = 0;
     if (idx >= CHEAT_SLOTS || !code) return;
+    if (strchr(code, '-') && gg_decode(code, &gg_line[idx].addr, &gg_line[idx].val)) {
+        gg_on[idx] = enabled; cheat_nlines[idx] = 0; cheat_on[idx] = false; cheat_dirty = true;
+        return;
+    }
+    gg_on[idx] = false;
     for (; *code; code++) {
         int h = hexv(*code);
         if (h < 0) { if (nd) nd = 0; continue; }   /* a separator inside a group drops the group */

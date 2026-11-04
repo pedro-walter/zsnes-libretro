@@ -90,7 +90,7 @@ builders, init and UI glue.
 * All 18 test ROMs (LoROM/HiROM, SA-1, SuperFX incl. Stunt Race FX, DSP-1, C4, OBC1 header, ST010/011, S-DD1, SPC7110) are identical
   to the asm reference core over thousands of frames with random input; Top Gear (E) also matches the real ZSNES executable's trace.
 * PAL/NTSC, SRAM, reset, save states, Pro Action Replay RAM cheats work. No zip/JMA (the frontend unwraps archives), no netplay/GUI,
-  no Game Genie, mouse/Super Scope/multitap are not mapped.
+  mouse/Super Scope/multitap are not mapped. Game Genie codes patch the ROM image after the first frame (unverified against the original).
 * Not translated (will abort with a message if reached): the mode-7 EXTBG routines that patch their own code (`mode7ext.asm`), the
   DOS-only files, the hq2x/3x/4x filters.
 * Two bugs of the original asm were fixed because they made the reference itself misbehave: Stunt Race FX's old video engine read
