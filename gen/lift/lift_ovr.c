@@ -2647,6 +2647,16 @@ void zl_C4ReadReg(void);
 static u32 ovw_zl_C4ReadReg(void) { zl_C4ReadReg(); return 0; }
 void zl_C4WriteReg(void);
 static u32 ovw_zl_C4WriteReg(void) { zl_C4WriteReg(); return 0; }
+void zl_InitOBC(void);
+static u32 ovw_zl_InitOBC(void) { zl_InitOBC(); return 0; }
+void zl_OBCClear(void);
+static u32 ovw_zl_OBCClear(void) { zl_OBCClear(); return 0; }
+void zl_OBCRegs(void);
+static u32 ovw_zl_OBCRegs(void) { zl_OBCRegs(); return 0; }
+void zl_OBCReadReg(void);
+static u32 ovw_zl_OBCReadReg(void) { zl_OBCReadReg(); return 0; }
+void zl_OBCWriteReg(void);
+static u32 ovw_zl_OBCWriteReg(void) { zl_OBCWriteReg(); return 0; }
 u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_wdsp00,
     ovw_zl_wdsp01,
@@ -4356,6 +4366,11 @@ u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_C4activate,
     ovw_zl_C4ReadReg,
     ovw_zl_C4WriteReg,
+    ovw_zl_InitOBC,
+    ovw_zl_OBCClear,
+    ovw_zl_OBCRegs,
+    ovw_zl_OBCReadReg,
+    ovw_zl_OBCWriteReg,
     0 };
 const char *const lift_ovr_names[] = {
     "WDSPReg00",
@@ -6066,8 +6081,13 @@ const char *const lift_ovr_names[] = {
     "cpu/memory.ao:C4activate",
     "C4ReadReg",
     "C4WriteReg",
+    "InitOBC",
+    "cpu/memory.ao:OBCClear",
+    "cpu/memory.ao:OBCRegs",
+    "cpu/memory.ao:OBCReadReg",
+    "cpu/memory.ao:OBCWriteReg",
     0 };
-const int lift_ovr_count = 1708;
+const int lift_ovr_count = 1713;
 const char *const lift_ovr_cnames[] = {
     "zl_wdsp00",
     "zl_wdsp01",
@@ -7777,6 +7797,11 @@ const char *const lift_ovr_cnames[] = {
     "zl_C4activate",
     "zl_C4ReadReg",
     "zl_C4WriteReg",
+    "zl_InitOBC",
+    "zl_OBCClear",
+    "zl_OBCRegs",
+    "zl_OBCReadReg",
+    "zl_OBCWriteReg",
     0 };
 const unsigned short lift_ovr_flags[] = {
     2,
@@ -9479,6 +9504,11 @@ const unsigned short lift_ovr_flags[] = {
     48896,
     65280,
     62208,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
     48896,
     48896,
     48896,
@@ -11197,6 +11227,11 @@ const unsigned lift_ovr_ids[] = {
     0x2201a0cu,
     0x2201ffbu,
     0x220200au,
+    0x2200795u,
+    0x2200933u,
+    0x220094au,
+    0x2200a07u,
+    0x2200a16u,
     0 };
 const unsigned lift_text_id[] = {
     0x200000u,
@@ -18478,12 +18513,17 @@ const unsigned lift_sym_addr[] = {
     0x3403749cu,
     0x340374a4u,
     0x340374a6u,
+    0x340374a9u,
     0x34037d68u,
     0x34037d70u,
     0x34037d71u,
     0x34037d72u,
     0x34037db5u,
     0x34037dd0u,
+    0x34037dd9u,
+    0x34037dddu,
+    0x34037ddeu,
+    0x34037ddfu,
     0x34037e50u,
     0x34037e5cu,
     0x34037e5du,
@@ -21198,12 +21238,17 @@ const char *const lift_sym_name[] = {
     "MuteVoiceF",
     "t1cc",
     "skipnextkey42",
+    "OBCIncArray",
     "LatestBank",
     "C4ObjSelec",
     "C4SObjSelec",
     "C4Pause",
     "C4Temp",
     "SprValAdd",
+    "OBClog",
+    "NumSprites",
+    "OBCOldRegArray",
+    "OBCRegArray",
     "C4values",
     "BWUsed2",
     "BWUsed",
@@ -23147,4 +23192,4 @@ const char *const lift_sym_name[] = {
     "zcfgdir",
     "_cchar",
     0 };
-const int lift_sym_count = 2718;
+const int lift_sym_count = 2723;

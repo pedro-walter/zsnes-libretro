@@ -570,6 +570,7 @@
 #define ZO_NumCombo 0x3409db7fu
 #define ZO_NumComboLocl 0x3409db87u
 #define ZO_NumInputDevices 0x340a73b5u
+#define ZO_NumSprites 0x34037dddu
 #define ZO_NumVideoModes 0x340a71cbu
 #define ZO_NumberOfOpcodes 0x34002760u
 #define ZO_NumberOfOpcodes2 0x340345a9u
@@ -577,6 +578,10 @@
 #define ZO_NumofBanks 0x340a7029u
 #define ZO_NumofBytes 0x340a702du
 #define ZO_NumofSPCBlock 0x3402e300u
+#define ZO_OBCIncArray 0x340374a9u
+#define ZO_OBCOldRegArray 0x34037ddeu
+#define ZO_OBCRegArray 0x34037ddfu
+#define ZO_OBClog 0x34037dd9u
 #define ZO_OMBGTestVal 0x341d3befu
 #define ZO_OffBy1Line 0x340a8ed6u
 #define ZO_Offby1line 0x340a4653u
@@ -6013,6 +6018,10 @@
 #define ZID_C4SprDisintegrate 0x2201120u
 #define ZID_C4BitPlaneWave 0x2201337u
 #define ZID_C4WireFrame 0x220180cu
+#define ZID_OBCReadReg 0x2200a07u
+#define ZID_OBCWriteReg 0x2200a16u
+#define ZID_OBCClear 0x2200933u
+#define ZID_OBCRegs 0x220094au
 #define ZOVR_zl_wdsp00 ((0x7Cu << 21) | 0u)
 #define ZOVR_zl_wdsp01 ((0x7Cu << 21) | 1u)
 #define ZOVR_zl_wdsp02 ((0x7Cu << 21) | 2u)
@@ -7872,3 +7881,12 @@
 #define ZID_C4activate 0x2201a0cu
 #define ZOVR_zl_C4ReadReg ((0x7Cu << 21) | 1706u)
 #define ZOVR_zl_C4WriteReg ((0x7Cu << 21) | 1707u)
+#define ZOVR_zl_InitOBC ((0x7Cu << 21) | 1708u)
+#define ZOVR_zl_OBCClear ((0x7Cu << 21) | 1709u)
+#define ZID_OBCClear 0x2200933u
+#define ZOVR_zl_OBCRegs ((0x7Cu << 21) | 1710u)
+#define ZID_OBCRegs 0x220094au
+#define ZOVR_zl_OBCReadReg ((0x7Cu << 21) | 1711u)
+#define ZID_OBCReadReg 0x2200a07u
+#define ZOVR_zl_OBCWriteReg ((0x7Cu << 21) | 1712u)
+#define ZID_OBCWriteReg 0x2200a16u

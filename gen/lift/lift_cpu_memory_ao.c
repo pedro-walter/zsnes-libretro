@@ -732,6 +732,7 @@ L78f:
     {u32 v_=M32(esp); esp+=4; ecx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L795:
+    OVR_GUARD(1708)
     {u32 s_=esp; esp-=32; M32(esp+28)=eax; M32(esp+24)=ecx; M32(esp+20)=edx; M32(esp+16)=ebx; M32(esp+12)=s_; M32(esp+8)=ebp; M32(esp+4)=esi; M32(esp)=edi;}
     esi=M32((u32)(0x340a9f70u));
     {u32 a_=esi, b_=0x400000u, r=(u32)(a_+b_); esi=r; }
@@ -821,12 +822,14 @@ L923:
     edi=M32(esp); esi=M32(esp+4); ebp=M32(esp+8); ebx=M32(esp+16); edx=M32(esp+20); ecx=M32(esp+24); eax=M32(esp+28); esp+=32;
     pc=M32(esp); esp+=4; goto dispatch;
 L933:
+    OVR_GUARD(1709)
     esp-=4; M32(esp)=0x2200938u; goto L859;
 L938:
     M8((u32)(0x34037de7u))=0x1u;
     M32((u32)(0x34037dd9u))=0x0u;
     pc=M32(esp); esp+=4; goto dispatch;
 L94a:
+    OVR_GUARD(1710)
     {u32 s_=esp; esp-=32; M32(esp+28)=eax; M32(esp+24)=ecx; M32(esp+20)=edx; M32(esp+16)=ebx; M32(esp+12)=s_; M32(esp+8)=ebp; M32(esp+4)=esi; M32(esp)=edi;}
     {u32 a_=ecx, b_=0x1ff0u, r=(u32)(a_-b_); ecx=r; }
     {u8 a_=M8((u32)(0x34037de7u)), b_=0x0u, r=(u8)(a_-b_);  zf=!r;}
@@ -870,11 +873,13 @@ L9f4:
     edi=M32(esp); esi=M32(esp+4); ebp=M32(esp+8); ebx=M32(esp+16); edx=M32(esp+20); ecx=M32(esp+24); eax=M32(esp+28); esp+=32;
     pc=M32(esp); esp+=4; goto dispatch;
 La07:
+    OVR_GUARD(1711)
     {u32 a_=ecx, b_=M32((u32)(0x340a7059u)), r=(u32)(a_+b_); ecx=r; }
     eax=(eax&0xFFFFFF00u)|(u8)(M8((u32)(ecx)));
     {u32 a_=ecx, b_=M32((u32)(0x340a7059u)), r=(u32)(a_-b_); ecx=r; cf=a_<b_;}
     pc=M32(esp); esp+=4; goto dispatch;
 La16:
+    OVR_GUARD(1712)
     {u32 a_=ecx, b_=M32((u32)(0x340a7059u)), r=(u32)(a_+b_); ecx=r; }
     M8((u32)(ecx))=(u8)eax;
     {u32 a_=ecx, b_=M32((u32)(0x340a7059u)), r=(u32)(a_-b_); ecx=r; cf=a_<b_;}

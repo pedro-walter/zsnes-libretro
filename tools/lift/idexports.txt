@@ -39,3 +39,7 @@ cpu/memory.ao:C4SprRotateR
 cpu/memory.ao:C4SprDisintegrate
 cpu/memory.ao:C4BitPlaneWave
 cpu/memory.ao:C4WireFrame
+cpu/memory.ao:OBCReadReg
+cpu/memory.ao:OBCWriteReg
+cpu/memory.ao:OBCClear
+cpu/memory.ao:OBCRegs

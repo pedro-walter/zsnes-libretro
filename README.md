@@ -98,10 +98,15 @@ Verification tools (`tools/lift/lift_rt.c`):
 * Debug aids: harness `-Z <frame> <file>` dumps WRAM, `ZL_SCHED_TRACE=file` / `ZL_SCHED_TRACE_TXT` (lifted) and `ZS_SCHED_TRACE[_TXT]` (the hybrid
   `make all` core) log the scheduler state per scanline, `ZL_VD_TRACE=N` traces the drawer calls of the Nth frame.
 
-Still lifted asm (no hand-written C yet): SPC7110 (needs data files / ROM hacks), C4 and OBC1 (OBC1 is never enabled by ZSNES for the Metal Combat dump
-used here), DSP-2..4, the new-engine renderer proper (`StartDrawNewGfx16b`, the tile/line/sprite
-drawers: ~13k lines of macros) and the old per-line engine (only Stunt Race FX uses it), the remainder of `execute.asm`, the opcode-table
-builders, init and UI glue.
+Hand-written C also covers the DSP-2 command engine (`core/zl/dsp2.c`, test ROMs from `tools/mkrom_dsp2.py`), the C4 arithmetic commands and
+register-RAM glue (`core/zl/c4.c`, `tools/mkrom_c4.py`; the sprite/wireframe/scaler engines stay lifted) and OBC-1 (`core/zl/obc.c`,
+`tools/mkrom_obc.py`).  Each was compared with the original over the whole machine state using `ZL_DUAL`.
+
+Still lifted asm (no hand-written C yet): SPC7110 (needs data files / ROM hacks), the C4 sprite/wireframe engines, the new-engine renderer
+proper (`StartDrawNewGfx16b`, the tile/line/sprite drawers: ~13k lines of macros) and the old per-line engine (only Stunt Race FX uses it),
+the remainder of `execute.asm`, the opcode-table builders, init and UI glue.  (DSP-3/4, ST018 and SPC7110 chips are not emulated by ZSNES
+1.42 itself, so there is nothing to port for them.)  Games with a real-time clock (Daikaijuu Monogatari II, Tengai Makyou Zero) read the wall
+clock, so two runs only match frame-for-frame if they read the same seconds.
 
 ## Status
 

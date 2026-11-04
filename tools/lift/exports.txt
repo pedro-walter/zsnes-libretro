@@ -28,3 +28,8 @@ BackAreaUnFillCol
 clinemainsub
 prevpal2
 C4Temp
+OBCRegArray
+OBClog
+NumSprites
+OBCOldRegArray
+OBCIncArray
