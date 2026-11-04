@@ -158,6 +158,7 @@ int main(int argc, char **argv) {
         size_t sz = ssz ? ssz() : 0; uint8_t *buf = malloc(sz ? sz : 1);
         uint32_t *c1 = calloc(statelen, 4), *c2 = calloc(statelen, 4); int bad = 0;
         if (!sz || !ser(buf, sz)) { printf("state: serialize failed (size %zu)\n", sz); return 1; }
+        { size_t used = sz; while (used > 8 && !buf[used - 1]) used--; printf("state size: %zu bytes used of %zu\n", used, sz); }
         audio_crc = 0;
         for (int k = 0; k < statelen; k++) { retro_run_p(); c1[k] = (last_rgb ? crc32(0, last_rgb, lw * lh * 3) : 0) ^ audio_crc; }
         if (!unser(buf, sz)) { printf("state: unserialize failed\n"); return 1; }

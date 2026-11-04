@@ -1698,3 +1698,4 @@ setaaccessbankw8a zl_setaaccessbankw8a cmp=eax,ecx,ebx,edx,esi,edi
 setaaccessbankr16a zl_setaaccessbankr16a cmp=eax,ecx,ebx,edx,esi,edi
 setaaccessbankw16a zl_setaaccessbankw16a cmp=eax,ecx,ebx,edx,esi,edi
 StartDrawNewGfx16b zl_StartDrawNewGfx16b cmp=eax,ebx,ecx,edx,esi,edi,ebp
+MainLoop zl_sfx_mainloop cmp=eax,ecx,esi,edi,ebp

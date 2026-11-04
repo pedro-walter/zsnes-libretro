@@ -61,6 +61,7 @@ gen:
 	CPATH=$${CPATH:-/usr/include/x86_64-linux-gnu} $(MAKE) -f Makefile refobjs B=build
 	python3 tools/lift/gen.py $(L)
 	cp tools/lift/lift.h tools/lift/lift_mmx.h $(L)/
+	python3 tools/lift/gen_sfx.py $(L)/sfx_tab.h
 .PHONY: all gen
 
 # ---- per-instruction lifter test (32-bit native vs emitted C) ----
