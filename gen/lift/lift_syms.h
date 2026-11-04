@@ -7855,3 +7855,8 @@
 #define ZOVR_zl_setaaccessbankw16a ((0x7Cu << 21) | 1697u)
 #define ZOVR_zl_StartDrawNewGfx16b ((0x7Cu << 21) | 1698u)
 #define ZOVR_zl_sfx_mainloop ((0x7Cu << 21) | 1699u)
+#define ZOVR_zl_InitDSP2 ((0x7Cu << 21) | 1700u)
+#define ZOVR_zl_DSP2Read8b ((0x7Cu << 21) | 1701u)
+#define ZOVR_zl_DSP2Read16b ((0x7Cu << 21) | 1702u)
+#define ZOVR_zl_DSP2Write8b ((0x7Cu << 21) | 1703u)
+#define ZOVR_zl_DSP2Write16b ((0x7Cu << 21) | 1704u)

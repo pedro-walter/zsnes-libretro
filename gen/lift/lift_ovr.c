@@ -2631,6 +2631,16 @@ void zl_StartDrawNewGfx16b(void);
 static u32 ovw_zl_StartDrawNewGfx16b(void) { zl_StartDrawNewGfx16b(); return 0; }
 void zl_sfx_mainloop(void);
 static u32 ovw_zl_sfx_mainloop(void) { zl_sfx_mainloop(); return 0; }
+void zl_InitDSP2(void);
+static u32 ovw_zl_InitDSP2(void) { zl_InitDSP2(); return 0; }
+void zl_DSP2Read8b(void);
+static u32 ovw_zl_DSP2Read8b(void) { zl_DSP2Read8b(); return 0; }
+void zl_DSP2Read16b(void);
+static u32 ovw_zl_DSP2Read16b(void) { zl_DSP2Read16b(); return 0; }
+void zl_DSP2Write8b(void);
+static u32 ovw_zl_DSP2Write8b(void) { zl_DSP2Write8b(); return 0; }
+void zl_DSP2Write16b(void);
+static u32 ovw_zl_DSP2Write16b(void) { zl_DSP2Write16b(); return 0; }
 u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_wdsp00,
     ovw_zl_wdsp01,
@@ -4332,6 +4342,11 @@ u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_setaaccessbankw16a,
     ovw_zl_StartDrawNewGfx16b,
     ovw_zl_sfx_mainloop,
+    ovw_zl_InitDSP2,
+    ovw_zl_DSP2Read8b,
+    ovw_zl_DSP2Read16b,
+    ovw_zl_DSP2Write8b,
+    ovw_zl_DSP2Write16b,
     0 };
 const char *const lift_ovr_names[] = {
     "WDSPReg00",
@@ -6034,8 +6049,13 @@ const char *const lift_ovr_names[] = {
     "setaaccessbankw16a",
     "StartDrawNewGfx16b",
     "MainLoop",
+    "InitDSP2",
+    "DSP2Read8b",
+    "DSP2Read16b",
+    "DSP2Write8b",
+    "DSP2Write16b",
     0 };
-const int lift_ovr_count = 1700;
+const int lift_ovr_count = 1705;
 const char *const lift_ovr_cnames[] = {
     "zl_wdsp00",
     "zl_wdsp01",
@@ -7737,6 +7757,11 @@ const char *const lift_ovr_cnames[] = {
     "zl_setaaccessbankw16a",
     "zl_StartDrawNewGfx16b",
     "zl_sfx_mainloop",
+    "zl_InitDSP2",
+    "zl_DSP2Read8b",
+    "zl_DSP2Read16b",
+    "zl_DSP2Write8b",
+    "zl_DSP2Write16b",
     0 };
 const unsigned short lift_ovr_flags[] = {
     2,
@@ -9439,6 +9464,11 @@ const unsigned short lift_ovr_flags[] = {
     48896,
     65280,
     62208,
+    48896,
+    48896,
+    48896,
+    48896,
+    48896,
     0 };
 const unsigned lift_ovr_ids[] = {
     0x1a00610u,
@@ -11141,6 +11171,11 @@ const unsigned lift_ovr_ids[] = {
     0x1400105u,
     0x7801568u,
     0x605823u,
+    0x400000u,
+    0x400033u,
+    0x400085u,
+    0x4000b3u,
+    0x400566u,
     0 };
 const unsigned lift_text_id[] = {
     0x200000u,

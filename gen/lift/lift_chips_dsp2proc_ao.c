@@ -31,6 +31,7 @@ dispatch:
     }
 do_ret: pc=M32(esp); esp+=4; goto dispatch;
 L0:
+    OVR_GUARD(1700)
     M32((u32)(0x34001156u))=0x0u;
     M32((u32)(0x3400146cu))=0x0u;
     M32((u32)(0x34001470u))=0x8000u;
@@ -38,6 +39,7 @@ L0:
     M32((u32)(0x34001152u))=0x1u;
     pc=M32(esp); esp+=4; goto dispatch;
 L33:
+    OVR_GUARD(1701)
     {u8 a_=M8((u32)(0x34001156u)), b_=0x1u, r=(u8)(a_&b_);  zf=!r;}
     if (!zf) {goto L82;}
     {u16 a_=(u16)ecx, b_=0x8000u, r=(u16)(a_&b_);  zf=!r;}
@@ -58,6 +60,7 @@ L82:
 L84:
     pc=M32(esp); esp+=4; goto dispatch;
 L85:
+    OVR_GUARD(1702)
     {u32 a_=eax, b_=eax, r=(u32)(a_^b_); eax=r; cf=0;}
     pc=M32(esp); esp+=4; goto dispatch;
 L88:
@@ -76,6 +79,7 @@ L88:
     {u32 v_=M32(esp); esp+=4; eax=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 Lb3:
+    OVR_GUARD(1703)
     {u8 a_=M8((u32)(0x34001156u)), b_=0x1u, r=(u8)(a_&b_);  zf=!r;}
     if (!zf) {goto L563;}
     M8((u32)(0x3400115au))=(u8)eax;
@@ -370,6 +374,7 @@ L563:
 L565:
     pc=M32(esp); esp+=4; goto dispatch;
 L566:
+    OVR_GUARD(1704)
     {u32 a_=eax, b_=eax, r=(u32)(a_^b_); eax=r; cf=0;}
     pc=M32(esp); esp+=4; goto dispatch;
     FLUSH(); LIFT_BAD(0x400569u);
