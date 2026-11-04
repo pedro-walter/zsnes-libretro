@@ -2707,6 +2707,14 @@ u32 zl_drawbg3linepr116b(void);
 u32 zl_drawbg4linepr116b(void);
 u32 zl_drawline16b(void);
 u32 zl_drawline(void);
+void zl_reg420Bw(void);
+static u32 ovw_zl_reg420Bw(void) { zl_reg420Bw(); return 0; }
+void zl_UpdatePORSCMR(void);
+static u32 ovw_zl_UpdatePORSCMR(void) { zl_UpdatePORSCMR(); return 0; }
+void zl_UpdateSCBRCOLR(void);
+static u32 ovw_zl_UpdateSCBRCOLR(void) { zl_UpdateSCBRCOLR(); return 0; }
+void zl_UpdateCLSR(void);
+static u32 ovw_zl_UpdateCLSR(void) { zl_UpdateCLSR(); return 0; }
 u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_wdsp00,
     ovw_zl_wdsp01,
@@ -4455,6 +4463,10 @@ u32 (*const lift_ovr_fns[])(void) = {
     zl_drawbg4linepr116b,
     zl_drawline16b,
     zl_drawline,
+    ovw_zl_reg420Bw,
+    ovw_zl_UpdatePORSCMR,
+    ovw_zl_UpdateSCBRCOLR,
+    ovw_zl_UpdateCLSR,
     0 };
 const char *const lift_ovr_names[] = {
     "WDSPReg00",
@@ -6204,8 +6216,12 @@ const char *const lift_ovr_names[] = {
     "drawbg4linepr116b",
     "drawline16b",
     "drawline",
+    "reg420Bw",
+    "UpdatePORSCMR",
+    "UpdateSCBRCOLR",
+    "UpdateCLSR",
     0 };
-const int lift_ovr_count = 1747;
+const int lift_ovr_count = 1751;
 const char *const lift_ovr_cnames[] = {
     "zl_wdsp00",
     "zl_wdsp01",
@@ -7954,6 +7970,10 @@ const char *const lift_ovr_cnames[] = {
     "zl_drawbg4linepr116b",
     "zl_drawline16b",
     "zl_drawline",
+    "zl_reg420Bw",
+    "zl_UpdatePORSCMR",
+    "zl_UpdateSCBRCOLR",
+    "zl_UpdateCLSR",
     0 };
 const unsigned short lift_ovr_flags[] = {
     2,
@@ -9703,6 +9723,10 @@ const unsigned short lift_ovr_flags[] = {
     48897,
     48897,
     48897,
+    46848,
+    48896,
+    48896,
+    48896,
     0 };
 const unsigned lift_ovr_ids[] = {
     0x1a00610u,
@@ -11452,6 +11476,10 @@ const unsigned lift_ovr_ids[] = {
     0x781195cu,
     0x5e00377u,
     0x6200ec0u,
+    0x1800479u,
+    0x1e035e6u,
+    0x1e03678u,
+    0x1e036cbu,
     0 };
 const unsigned lift_text_id[] = {
     0x200000u,

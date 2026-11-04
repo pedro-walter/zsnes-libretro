@@ -446,6 +446,7 @@ L472:
     {u32 v_=M32(esp); esp+=4; eax=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L479:
+    OVR_GUARD(1747)
     {u32 v_=eax; esp-=4; M32(esp)=v_;}
     {u32 v_=esi; esp-=4; M32(esp)=v_;}
     {u32 v_=edi; esp-=4; M32(esp)=v_;}

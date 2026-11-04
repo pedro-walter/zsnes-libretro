@@ -7924,3 +7924,7 @@
 #define ZOVR_zl_drawbg4linepr116b ((0x7Cu << 21) | 1744u)
 #define ZOVR_zl_drawline16b ((0x7Cu << 21) | 1745u)
 #define ZOVR_zl_drawline ((0x7Cu << 21) | 1746u)
+#define ZOVR_zl_reg420Bw ((0x7Cu << 21) | 1747u)
+#define ZOVR_zl_UpdatePORSCMR ((0x7Cu << 21) | 1748u)
+#define ZOVR_zl_UpdateSCBRCOLR ((0x7Cu << 21) | 1749u)
+#define ZOVR_zl_UpdateCLSR ((0x7Cu << 21) | 1750u)

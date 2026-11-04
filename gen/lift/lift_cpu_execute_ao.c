@@ -3554,6 +3554,7 @@ L35d7:
     if (!zf) {goto L35cc;}
     pc=M32(esp); esp+=4; goto dispatch;
 L35e6:
+    OVR_GUARD(1748)
     {u32 v_=ebx; esp-=4; M32(esp)=v_;}
     {u32 v_=eax; esp-=4; M32(esp)=v_;}
     {u8 a_=M8((u32)(0x340024e4u)), b_=0x10u, r=(u8)(a_&b_);  zf=!r;}
@@ -3594,6 +3595,7 @@ L3637:
     {u32 v_=M32(esp); esp+=4; ebx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L3678:
+    OVR_GUARD(1749)
     {u32 v_=eax; esp-=4; M32(esp)=v_;}
     {u32 v_=ebx; esp-=4; M32(esp)=v_;}
     ebx=M32((u32)(0x340024c8u));
@@ -3613,6 +3615,7 @@ L3678:
     {u32 v_=M32(esp); esp+=4; eax=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L36cb:
+    OVR_GUARD(1750)
     M32((u32)(0x340345a9u))=0x15eu;
     {u8 a_=M8((u32)(0x340024ccu)), b_=0x1u, r=(u8)(a_&b_);  zf=!r;}
     if (zf) {goto L36ec;}

@@ -1746,3 +1746,7 @@ drawbg3linepr116b zl_drawbg3linepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
 drawbg4linepr116b zl_drawbg4linepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
 drawline16b zl_drawline16b tail cmp=eax,ecx,ebx,edx,esi,edi
 drawline zl_drawline tail cmp=eax,ecx,ebx,edx,esi,edi
+reg420Bw zl_reg420Bw cmp=eax,ecx,edx,esi,edi
+UpdatePORSCMR zl_UpdatePORSCMR cmp=eax,ecx,ebx,edx,esi,edi
+UpdateSCBRCOLR zl_UpdateSCBRCOLR cmp=eax,ecx,ebx,edx,esi,edi
+UpdateCLSR zl_UpdateCLSR cmp=eax,ecx,ebx,edx,esi,edi
