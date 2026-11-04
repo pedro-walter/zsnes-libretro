@@ -76,9 +76,9 @@ Verification tools (`tools/lift/lift_rt.c`):
 * `tools/fuzzrom_par.sh <so> rom|dsp1|sfx|sa1|sdd1 <from> <to>`: generated register-fuzz ROMs (random PPU/DMA/chip traffic); a mismatch that
   also exists with `LIFT_NOOVR=all` is a lifter-vs-native effect, one that disappears with an override disabled is a bug in that override
   (this is how the StartDrawNewGfx16b pass order and the SA-1 BRK were found).
-  The remaining lifter-vs-native cases are random DMA setups whose B-bus register goes past $21FF: `transdma` then indexes `regptw`
-  out of range and calls whatever follows that table, which is layout dependent (rom 41: the ref reads a harmless value, the lifted core
-  hits `bad dispatch target 0x80ba8b`). Real games never do this.
+  The remaining lifter-vs-native cases (e.g. rom 41, DMA setups with random A/B-bus registers) end in `bad dispatch target` inside
+  `regaccessbankr8`: the `regptra` entry it calls (a fixed 0x3000-entry table, all `regINVALID` after init) holds a non-code value in the lifted
+  core, so something wrote into that table earlier. The reference does not die there. Root cause not found; real games do not hit it.
 * Debug aids: harness `-Z <frame> <file>` dumps WRAM, `ZL_SCHED_TRACE=file` / `ZL_SCHED_TRACE_TXT` (lifted) and `ZS_SCHED_TRACE[_TXT]` (the hybrid
   `make all` core) log the scheduler state per scanline, `ZL_VD_TRACE=N` traces the drawer calls of the Nth frame.
 
