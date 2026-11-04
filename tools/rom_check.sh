@@ -21,7 +21,7 @@ while f<n:
 print(",".join(out))
 PY
 )
-run() { HARNESS_DIR="$W/$2" ; mkdir -p "$W/$2"; HARNESS_DIR="$W/$2" timeout ${TMO:-900} "$(H "$1")" "$1" "$ROM" -f "$N" -M 1 -i "$IN" -s "$(seq -s, 50 50 "$N")" 2>"$W/$2.err" | grep -E "^frame|^done" > "$W/$2.out"; echo "$? " >/dev/null; }
+run() { HARNESS_DIR="$W/$2" ; mkdir -p "$W/$2"; HARNESS_DIR="$W/$2" timeout ${TMO:-900} "$(H "$1")" "$1" "$ROM" -f "$N" -M 1 -i "$IN" -s "$(seq -s, ${SSTEP:-50} ${SSTEP:-50} "$N")" 2>"$W/$2.err" | grep -E "^frame|^done" > "$W/$2.out"; echo "$? " >/dev/null; }
 run "$REF" ref & run "$CAND" cand & wait
 nr=$(wc -l < "$W/ref.out"); nc=$(wc -l < "$W/cand.out")
 if cmp -s "$W/ref.out" "$W/cand.out"; then echo "IDENTICAL ($nr lines) $(tail -1 "$W/cand.out")"; exit 0; fi

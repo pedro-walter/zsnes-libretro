@@ -1732,3 +1732,7 @@ drawbg1tile16b zl_drawbg1tile16b tail cmp=eax,ecx,ebx,edx,esi,edi
 drawbg2tile16b zl_drawbg2tile16b tail cmp=eax,ecx,ebx,edx,esi,edi
 drawbg3tile16b zl_drawbg3tile16b tail cmp=eax,ecx,ebx,edx,esi,edi
 drawbg4tile16b zl_drawbg4tile16b tail cmp=eax,ecx,ebx,edx,esi,edi
+drawbg1tilepr116b zl_drawbg1tilepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
+drawbg2tilepr116b zl_drawbg2tilepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
+drawbg3tilepr116b zl_drawbg3tilepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
+drawbg4tilepr116b zl_drawbg4tilepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
