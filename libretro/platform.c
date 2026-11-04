@@ -252,6 +252,7 @@ void initwinvideo(void)
     SoundQuality = 5;      /* 32000 Hz */
     StereoSound = 1;
     set_keymap();
+    if (getenv("ZS_OLDGFX")) newengen = 0;   /* test aid: force the old per-line video engine */
     if (first && getenv("ZS_TEST_PER2EXEC")) { /* negative control for timing tests */
         per2exec = (unsigned)atoi(getenv("ZS_TEST_PER2EXEC"));
         Setper2exec();

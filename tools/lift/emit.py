@@ -78,6 +78,8 @@ class Emitter:
         if op.type == X86_OP_REG:
             return self.rd_reg(self.rn(ins, op))
         if op.type == X86_OP_IMM:
+            if ins.pcell is not None:
+                return '(u%d)pc%d' % (op.size * 8, ins.pcell)
             if ins.immr is not None:
                 res, add = ins.immr
                 _, v = tgt_value(res, add)
@@ -92,6 +94,8 @@ class Emitter:
         if op.type == X86_OP_REG:
             return self.wr_reg(self.rn(ins, op), v)
         if op.type == X86_OP_MEM:
+            if ins.patch is not None:
+                return 'pc%d=(u%d)(%s);' % (ins.patch.pcell, op.size * 8, v)
             return '%s=%s;' % (self.mem(op.size, self.ea(ins, op)), v)
         raise Unsupported('wr operand')
 

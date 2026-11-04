@@ -8,7 +8,7 @@ CF, ZF, SF, OF, PF, AF = 1, 2, 4, 8, 16, 32
 ALL = 63
 
 class Ins:
-    __slots__ = ('addr', 'size', 'mn', 'ops', 'rep', 'tgt', 'relocs', 'ci', 'uses', 'defs', 'cond', 'lout', 'lin', 'succ_kind', 'raw', 'immr', 'dispr', 'c4')
+    __slots__ = ('addr', 'size', 'mn', 'ops', 'rep', 'tgt', 'relocs', 'ci', 'uses', 'defs', 'cond', 'lout', 'lin', 'succ_kind', 'raw', 'immr', 'dispr', 'c4', 'patch', 'pcell')
 
 md = Cs(CS_ARCH_X86, CS_MODE_32)
 md.detail = True
@@ -114,7 +114,7 @@ def disasm_obj(P, o, data_entries=()):
         ins.relocs = {}
         for r in range(i.address, i.address + i.size):
             if r in rel: ins.relocs[r - i.address] = rel[r]
-        ins.immr = None; ins.dispr = None; ins.tgt = None
+        ins.immr = None; ins.dispr = None; ins.tgt = None; ins.patch = None; ins.pcell = None
         return ins
     off = 0
     n = len(text)

@@ -229,10 +229,10 @@ NEWSYM drawmode7extbg
 .nextposy
     mov ch,ah
     mov cl,byte[.mode7yrpos+1]
-    add eax,0
+    add eax,strict dword 0
 .m7xrpa
     mov dl,[mode7tab+ecx]
-    sub dword[.mode7yrpos],0
+    sub dword[.mode7yrpos],strict dword 0
 .m7yrpa
     mov cl,[edi+edx]
     mov byte[esi+288],cl
@@ -253,7 +253,7 @@ NEWSYM drawmode7extbg
     xor ecx,ecx
     mov cl,[vrama+ebx]
     shl ecx,7
-    sub eax,0
+    sub eax,strict dword 0
 .m7xad2
     lea edi,[ecx+vrama]
     jmp .nextposx
@@ -265,7 +265,7 @@ NEWSYM drawmode7extbg
     xor ecx,ecx
     mov cl,[vrama+ebx]
     shl ecx,7
-    add dword[.mode7yrpos],0
+    add dword[.mode7yrpos],strict dword 0
 .m7yad2
     lea edi,[ecx+vrama]
     jmp .nextposy
@@ -369,10 +369,10 @@ NEWSYM drawmode7extbg
 .nextposyr
     mov cl,[.mode7yrpos+1]
     mov ch,[.mode7xrpos+1]
-    add dword[.mode7xrpos],0
+    add dword[.mode7xrpos],strict dword 0
 .m7xrpa2
     mov dl,[mode7tab+ecx]
-    sub dword[.mode7yrpos],0
+    sub dword[.mode7yrpos],strict dword 0
 .m7yrpa2
     mov cl,[edi+edx]
     mov byte[esi+288],cl
