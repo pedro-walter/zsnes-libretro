@@ -37,6 +37,17 @@ void retro_set_environment(retro_environment_t cb)
     bool yes = true;
     cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &(bool){ false });
     {
+        static const struct retro_input_descriptor desc[] = {
+#define D(p, id, name) { p, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_##id, name }
+            D(0, LEFT, "D-Pad Left"), D(0, UP, "D-Pad Up"), D(0, DOWN, "D-Pad Down"), D(0, RIGHT, "D-Pad Right"),
+            D(0, B, "B"), D(0, A, "A"), D(0, Y, "Y"), D(0, X, "X"), D(0, L, "L"), D(0, R, "R"), D(0, SELECT, "Select"), D(0, START, "Start"),
+            D(1, LEFT, "D-Pad Left"), D(1, UP, "D-Pad Up"), D(1, DOWN, "D-Pad Down"), D(1, RIGHT, "D-Pad Right"),
+            D(1, B, "B"), D(1, A, "A"), D(1, Y, "Y"), D(1, X, "X"), D(1, L, "L"), D(1, R, "R"), D(1, SELECT, "Select"), D(1, START, "Start"),
+#undef D
+            { 0, 0, 0, 0, NULL } };
+        cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, (void *)desc);
+    }
+    {
         static const struct retro_controller_description p1[] = { { "SNES Controller", RETRO_DEVICE_JOYPAD }, { "SNES Mouse", RETRO_DEVICE_MOUSE } };
         static const struct retro_controller_description p2[] = { { "SNES Controller", RETRO_DEVICE_JOYPAD }, { "SNES Mouse", RETRO_DEVICE_MOUSE },
                                                                   { "Super Scope", RETRO_DEVICE_LIGHTGUN } };
