@@ -59,7 +59,7 @@ lifted `LG` state; the original lifted body stays available as the oracle).  Don
 | DSP mixer, DSP register writes, key-on | `dspmix.c`, `dspw.c` |
 | SPC700 opcodes + timers | `spc700.c` |
 | 65816 opcodes (incl. decimal ADC/SBC via a portable model of x86 DAA/DAS), memory bank handlers | `cpu.c`, `mem.c` |
-| SA-1: its 65816 opcodes (the same code compiled with the SA-1 state names), registers/arith/var-length/IRAM | `cpu_sa1.c`, `sa1regs.c` |
+| SA-1: its 65816 opcodes (the same code compiled with the SA-1 state names), registers/arith/var-length/IRAM, DMA and character conversion | `cpu_sa1.c`, `sa1regs.c` |
 | DMA/HDMA, PPU/IO register handlers, scanline scheduler | `dma.c`, `regs.c`, `sched.c` |
 | video: per-line state capture, window tables, screen clipping, colour math (`ProcessTransparencies`), tile cache conversion, sprite caching and sprite lists | `video_line.c`, `video_win.c`, `video_clip.c`, `video_transp.c`, `video_cache.c`, `video_sprcache.c`, `video_sprites.c` |
 | SuperFX registers/RAM windows, the SuperFX (GSU) interpreter incl. plotting, DSP-1 command interface, ST010/ST011 memory | `sfxregs.c`, `sfx.c`, `dsp1.c`, `seta.c` |
@@ -89,7 +89,7 @@ Verification tools (`tools/lift/lift_rt.c`):
   `make all` core) log the scheduler state per scanline, `ZL_VD_TRACE=N` traces the drawer calls of the Nth frame.
 
 Still lifted asm (no hand-written C yet): SPC7110 (needs data files / ROM hacks), C4 and OBC1 (OBC1 is never enabled by ZSNES for the Metal Combat dump
-used here), the SA-1 DMA/character-conversion engines, DSP-2..4, the new-engine renderer proper (`StartDrawNewGfx16b`, the tile/line/sprite
+used here), DSP-2..4, the new-engine renderer proper (`StartDrawNewGfx16b`, the tile/line/sprite
 drawers: ~13k lines of macros) and the old per-line engine (only Stunt Race FX uses it), the remainder of `execute.asm`, the opcode-table
 builders, init and UI glue.
 

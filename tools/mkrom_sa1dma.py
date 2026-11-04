@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+# SA-1 DMA / character-conversion test ROM: random DMA setups ($2230-$2239) between ROM, BW-RAM and I-RAM, repeated.
+#   mkrom_sa1dma.py <out.sfc> <seed>
+import sys, random, struct
+out, seed = sys.argv[1], int(sys.argv[2])
+rnd = random.Random(seed)
+rom = bytearray(rnd.getrandbits(8) for _ in range(1 << 20))
+c = bytearray()
+def emit(*b): c.extend(b)
+def sta(addr, v): emit(0xA9, v & 255, 0x8D, addr & 255, addr >> 8)
+def stal(bank, addr, v): emit(0xA9, v & 255, 0x8F, addr & 255, addr >> 8, bank)
+emit(0x78, 0x18, 0xFB, 0xC2, 0x30, 0xA2, 0xFF, 0x1F, 0x9A, 0xE2, 0x20)
+sta(0x2100, 0x8F)
+sta(0x1F00, 0x77)
+sta(0x2220, 0x00); sta(0x2221, 0x01); sta(0x2222, 0x02); sta(0x2223, 0x03)
+sta(0x2226, 0xFF); sta(0x2227, 0xFF)                     # BW-RAM write enable
+for i in range(0, 0x600, 3):                              # fill BW-RAM with data
+    stal(0x40, i, rnd.getrandbits(8))
+loop = 0x8000 + len(c)
+for _ in range(60):
+    info = rnd.choice([0x10, 0x10, 0x10, 0x00, 0x01, 0x02, 0x04, 0x05, 0x06, 0x11, 0x12, 0x14])
+    sta(0x2230, info)
+    sta(0x2231, rnd.choice([0x00, 0x01, 0x02, 0x03, 0x05, 0x09]) | 0x04 * rnd.randrange(0, 6))
+    src = rnd.randrange(0, 0x400)
+    bank = rnd.choice([0x00, 0x00, 0x01])
+    if not (info & 3) and not (info & 0x10): src |= 0x8000           # ROM source: LoROM window
+    sta(0x2232, src & 255); sta(0x2233, src >> 8); sta(0x2234, bank)
+    sta(0x2238, rnd.randrange(1, 64)); sta(0x2239, 0)
+    dst = rnd.randrange(0, 0x400)
+    sta(0x2235, dst & 255)
+    sta(0x2237, 0x00) if rnd.random() < 0.5 else None
+    sta(0x2236, dst >> 8)
+    sta(0x2237, 0x00)
+emit(0x4C, loop & 255, loop >> 8)
+assert len(c) < 0x7000
+rom[0:len(c)] = c
+rom[0x7F00] = 0x40
+hdr = 0x7FC0
+rom[hdr:hdr + 21] = b'ZSNES SA1 DMA TEST   '[:21]
+rom[hdr + 0x15] = 0x23; rom[hdr + 0x16] = 0x35; rom[hdr + 0x17] = 0x0A; rom[hdr + 0x18] = 0x03; rom[hdr + 0x19] = 0x01; rom[hdr + 0x1A] = 0x33; rom[hdr + 0x1B] = 0
+for a, v in {0x7FE4: 0xFF00, 0x7FE6: 0xFF00, 0x7FE8: 0xFF00, 0x7FEA: 0xFF00, 0x7FEE: 0xFF00, 0x7FF4: 0xFF00, 0x7FF8: 0xFF00, 0x7FFA: 0xFF00, 0x7FFC: 0x8000, 0x7FFE: 0xFF00}.items():
+    rom[a:a + 2] = struct.pack('<H', v)
+cs = sum(rom) & 0xFFFF
+rom[hdr + 0x1C:hdr + 0x20] = struct.pack('<HH', (~cs) & 0xFFFF, cs)
+open(out, 'wb').write(rom)

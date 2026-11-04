@@ -1,7 +1,7 @@
 /*
  * SA-1 / S-DD1 register handlers (chips/sa1regs.asm): $2200-$2239 writes, $2300-$230E reads, the S-DD1 bank registers, the IRAM
  * accessors and the arithmetic unit.  Register ABI of the originals: al = value (writes) / result (reads); ebx is scratch.
- * The two DMA engines (executesa1dma, sa1chconv) stay in asm and are called through zl_mcall.
+ * The two DMA engines (executesa1dma, sa1chconv) are ported below.
  */
 #include "zl.h"
 #include <stdint.h>
@@ -290,17 +290,100 @@ void zl_sa12232w(void) { Z8(SA1DMASource, 0) = (u8)AL; }
 void zl_sa12233w(void) { Z8(SA1DMASource, 1) = (u8)AL; }
 void zl_sa12234w(void) { Z8(SA1DMASource, 2) = (u8)AL; }
 void zl_sa12235w(void) { Z8(SA1DMADest, 0) = (u8)AL; }
+/* DMA engine (sa1regs.asm executesa1dma): sa1dmaptr = destination, sa1dmaptrs = source; copies SA1DMACount bytes */
+static void sa1dma_exec(u32 dst)
+{
+    u32 src, n, i;
+    Z32(sa1dmaptr, 0) = dst;
+    if (Z8(SA1DMAInfo, 0) & 1) src = (Z32(SA1DMASource, 0) & 0x3FFFF) + Z32(SA1RAMArea, 0);
+    else if (Z8(SA1DMAInfo, 0) & 2) src = (Z32(SA1DMASource, 0) & 0x7FF) + (u32)ZO_IRAM;
+    else src = M32((u32)ZO_snesmmap + 4u * Z8(SA1DMASource, 2)) + (u16)Z16(SA1DMASource, 0);
+    Z32(sa1dmaptrs, 0) = src;
+    n = Z32(SA1DMACount, 0);
+    for (i = 0; i < n; i++) M8(dst + i) = M8(src + i);
+}
+static void sa1dmairam(void) { sa1dma_exec((Z32(SA1DMADest, 0) & 0x7FF) + (u32)ZO_IRAM); }
+static void sa1dmabwram(void) { sa1dma_exec((Z32(SA1DMADest, 0) & 0x3FFFF) + Z32(SA1RAMArea, 0)); }
+
+/* Character conversion DMA (sa1chconv): converts through a scratch area behind the ROM, then copies the result back over the source */
+static void setbits(u32 b, u8 al, const u16 *tab)
+{
+    /* tab: eight (mask-bit, value) pairs: mask in tab[2k], value in tab[2k+1]; values >= 0x8000|... are for [b+16] when tab[2k] has bit 8 set */
+    int k;
+    for (k = 0; k < 8; k++) {
+        u16 m = tab[2 * k], v = tab[2 * k + 1];
+        if (al & (m & 0xFF)) M16(b + ((m & 0x100) ? 16 : 0)) |= v;
+    }
+}
+static const u16 t4[4][16] = {
+    { 0x10, 0x0001, 0x20, 0x0100, 0x140, 0x0001, 0x180, 0x0100, 0x01, 0x0002, 0x02, 0x0200, 0x104, 0x0002, 0x108, 0x0200 },
+    { 0x10, 0x0004, 0x20, 0x0400, 0x140, 0x0004, 0x180, 0x0400, 0x01, 0x0008, 0x02, 0x0800, 0x104, 0x0008, 0x108, 0x0800 },
+    { 0x10, 0x0010, 0x20, 0x1000, 0x140, 0x0010, 0x180, 0x1000, 0x01, 0x0020, 0x02, 0x2000, 0x104, 0x0020, 0x108, 0x2000 },
+    { 0x10, 0x0040, 0x20, 0x4000, 0x140, 0x0040, 0x180, 0x4000, 0x01, 0x0080, 0x02, 0x8000, 0x104, 0x0080, 0x108, 0x8000 },
+};
+static const u16 t2[2][16] = {
+    { 0x40, 0x0001, 0x80, 0x0100, 0x10, 0x0002, 0x20, 0x0200, 0x04, 0x0004, 0x08, 0x0400, 0x01, 0x0008, 0x02, 0x0800 },
+    { 0x40, 0x0010, 0x80, 0x1000, 0x10, 0x0020, 0x20, 0x2000, 0x04, 0x0040, 0x08, 0x4000, 0x01, 0x0080, 0x02, 0x8000 },
+};
+static void sa1chconv(void)
+{
+    u32 ebx, edx, dstp, srcp, scratch, i, j, k;
+    Z8(SA1DoIRQ, 0) |= 8;
+    dstp = (Z32(SA1DMADest, 0) & 0x3FFFF) + Z32(SA1RAMArea, 0);
+    Z8(debstop4, 0) = 1;
+    Z32(sa1dmaptr, 0) = dstp;
+    srcp = (Z32(SA1DMASource, 0) & 0x3FFFF) + Z32(SA1RAMArea, 0);
+    Z32(sa1dmaptrs, 0) = srcp;
+    LG.ebx = srcp;
+    scratch = Z32(romdata, 0) + 4096 * 1024 + 1024 * 1024;
+    if (Z8(SA1DMAChar, 0) & 1) {            /* 4 bit */
+        ebx = scratch; edx = srcp;
+        for (i = 0; i < 16; i++) {
+            u32 bx0 = ebx, dx0 = edx;
+            for (j = 0; j < 32; j++) {
+                u32 bx1 = ebx, dx1 = edx;
+                for (k = 0; k < 8; k++) {
+                    M16(ebx) = 0;
+                    setbits(ebx, M8(edx + 3), t4[0]); setbits(ebx, M8(edx + 2), t4[1]);
+                    setbits(ebx, M8(edx + 1), t4[2]); setbits(ebx, M8(edx), t4[3]);
+                    ebx += 2; edx += 128;
+                }
+                ebx = bx1; edx = dx1; edx += 4; ebx += 32;
+            }
+            ebx = bx0; edx = dx0; edx += 128 * 8; ebx += 128 * 8;
+        }
+        for (i = 0; i < 10 * 128 * 8; i++) M8(srcp + i) = M8(scratch + i);
+    } else if (Z8(SA1DMAChar, 0) & 2) {     /* 2 bit */
+        ebx = scratch; edx = srcp;
+        for (i = 0; i < 16; i++) {
+            u32 bx0 = ebx, dx0 = edx;
+            for (j = 0; j < 32; j++) {
+                u32 bx1 = ebx, dx1 = edx;
+                for (k = 0; k < 8; k++) {
+                    M16(ebx) = 0;
+                    setbits(ebx, M8(edx + 1), t2[0]); setbits(ebx, M8(edx), t2[1]);
+                    ebx += 2; edx += 64;
+                }
+                ebx = bx1; edx = dx1; edx += 2; ebx += 16;
+            }
+            ebx = bx0; edx = dx0; edx += 64 * 8; ebx += 64 * 8;
+        }
+        for (i = 0; i < 10 * 64 * 8; i++) M8(srcp + i) = M8(scratch + i);
+    } else {
+        LG.ebx = dstp;                      /* 8 bit: nothing implemented */
+    }
+}
 void zl_sa12236w(void)
 {
     Z8(SA1DMADest, 1) = (u8)AL;
-    if (Z8(SA1DMAInfo, 0) & 0x10) { zl_mcall(ZID_sa1chconv); return; }
-    if (!(Z8(SA1DMAInfo, 0) & 4)) zl_mcall(ZID_sa1dmairam);
+    if (Z8(SA1DMAInfo, 0) & 0x10) { sa1chconv(); return; }
+    if (!(Z8(SA1DMAInfo, 0) & 4)) sa1dmairam();
 }
 void zl_sa12237w(void)
 {
     Z8(SA1DMADest, 2) = (u8)AL;
     if (Z8(SA1DMAInfo, 0) & 0x10) return;
-    if (Z8(SA1DMAInfo, 0) & 4) zl_mcall(ZID_sa1dmabwram);
+    if (Z8(SA1DMAInfo, 0) & 4) sa1dmabwram();
 }
 void zl_sa12238w(void) { Z8(SA1DMACount, 0) = (u8)AL; }
 void zl_sa12239w(void) { Z8(SA1DMACount, 1) = (u8)AL; }
