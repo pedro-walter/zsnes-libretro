@@ -2705,6 +2705,8 @@ u32 zl_drawbg1linepr116b(void);
 u32 zl_drawbg2linepr116b(void);
 u32 zl_drawbg3linepr116b(void);
 u32 zl_drawbg4linepr116b(void);
+u32 zl_drawline16b(void);
+u32 zl_drawline(void);
 u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_wdsp00,
     ovw_zl_wdsp01,
@@ -4451,6 +4453,8 @@ u32 (*const lift_ovr_fns[])(void) = {
     zl_drawbg2linepr116b,
     zl_drawbg3linepr116b,
     zl_drawbg4linepr116b,
+    zl_drawline16b,
+    zl_drawline,
     0 };
 const char *const lift_ovr_names[] = {
     "WDSPReg00",
@@ -6198,8 +6202,10 @@ const char *const lift_ovr_names[] = {
     "drawbg2linepr116b",
     "drawbg3linepr116b",
     "drawbg4linepr116b",
+    "drawline16b",
+    "drawline",
     0 };
-const int lift_ovr_count = 1745;
+const int lift_ovr_count = 1747;
 const char *const lift_ovr_cnames[] = {
     "zl_wdsp00",
     "zl_wdsp01",
@@ -7946,6 +7952,8 @@ const char *const lift_ovr_cnames[] = {
     "zl_drawbg2linepr116b",
     "zl_drawbg3linepr116b",
     "zl_drawbg4linepr116b",
+    "zl_drawline16b",
+    "zl_drawline",
     0 };
 const unsigned short lift_ovr_flags[] = {
     2,
@@ -9677,6 +9685,8 @@ const unsigned short lift_ovr_flags[] = {
     48896,
     48896,
     48896,
+    48897,
+    48897,
     48897,
     48897,
     48897,
@@ -11440,6 +11450,8 @@ const unsigned lift_ovr_ids[] = {
     0x780f5a6u,
     0x7810781u,
     0x781195cu,
+    0x5e00377u,
+    0x6200ec0u,
     0 };
 const unsigned lift_text_id[] = {
     0x200000u,

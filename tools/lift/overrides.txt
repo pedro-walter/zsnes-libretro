@@ -1744,3 +1744,5 @@ drawbg1linepr116b zl_drawbg1linepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
 drawbg2linepr116b zl_drawbg2linepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
 drawbg3linepr116b zl_drawbg3linepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
 drawbg4linepr116b zl_drawbg4linepr116b tail cmp=eax,ecx,ebx,edx,esi,edi
+drawline16b zl_drawline16b tail cmp=eax,ecx,ebx,edx,esi,edi
+drawline zl_drawline tail cmp=eax,ecx,ebx,edx,esi,edi

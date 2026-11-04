@@ -1100,6 +1100,7 @@ Le9f:
     
     
 Lec0:
+    OVR_GUARD(1746)
     eax=(eax&0xFFFFFF00u)|(u8)(M8((u32)(0x3404809eu)));
     M8((u32)(0x341e1559u))=(u8)eax;
     M8((u32)(0x341e1551u))=0x0u;

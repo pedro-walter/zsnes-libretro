@@ -7922,3 +7922,5 @@
 #define ZOVR_zl_drawbg2linepr116b ((0x7Cu << 21) | 1742u)
 #define ZOVR_zl_drawbg3linepr116b ((0x7Cu << 21) | 1743u)
 #define ZOVR_zl_drawbg4linepr116b ((0x7Cu << 21) | 1744u)
+#define ZOVR_zl_drawline16b ((0x7Cu << 21) | 1745u)
+#define ZOVR_zl_drawline ((0x7Cu << 21) | 1746u)

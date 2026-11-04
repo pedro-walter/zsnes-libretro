@@ -298,6 +298,7 @@ L363:
     {u32 v_=M32(esp); esp+=4; ebx=v_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L377:
+    OVR_GUARD(1745)
     {u8 a_=M8((u32)(0x340a41c4u)), b_=0x0u, r=(u8)(a_-b_);  zf=!r;}
     if (!zf) {goto L391;}
     {u8 a_=M8((u32)(0x341e1555u)), b_=0x1u, r=(u8)(a_-b_);  zf=!r;}
