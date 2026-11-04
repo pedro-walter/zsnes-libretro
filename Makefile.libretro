@@ -7,17 +7,17 @@ ifeq ($(CC),cc)
 CC := gcc
 endif
 MACH := $(shell $(CC) -dumpmachine 2>/dev/null)
-ifeq ($(platform),)
-  ifneq ($(findstring mingw,$(MACH))$(findstring windows,$(MACH)),)
-    platform := win
-  else ifeq ($(OS),Windows_NT)
-    platform := win
-  else
-    platform := unix
-  endif
+# The libretro buildbot passes platform=unix|linux|MINGW32|MINGW64|... so only the toolchain decides what is built.
+ifneq ($(findstring mingw,$(MACH))$(findstring windows,$(MACH))$(findstring MINGW,$(platform))$(findstring win,$(platform)),)
+  PLAT := win
+else ifeq ($(OS),Windows_NT)
+  PLAT := win
+else
+  PLAT := unix
 endif
 # the guest address space is 32-bit-pointer based on 32-bit hosts and 64-bit based otherwise
-ifneq ($(findstring x86_64,$(MACH))$(findstring aarch64,$(MACH))$(findstring arm64,$(MACH)),)
+PTRSZ := $(shell echo __SIZEOF_POINTER__ | $(CC) $(CFLAGS) -E -P -x c - 2>/dev/null)
+ifeq ($(PTRSZ),8)
   BITS := 64
 else
   BITS := 32
@@ -26,7 +26,7 @@ OSDEF   := -D__LINUX__
 LDLIBS  := -lm
 SYMLD   := gen/lift/lift_syms.ld
 EXT     := so
-ifeq ($(platform),win)
+ifeq ($(PLAT),win)
   OSDEF  := -D__WIN32__ -Ilibretro/shim -include sys/stat.h -include dirent.h
   LDLIBS := -lm -lws2_32 -static-libgcc
   EXT    := dll
@@ -38,7 +38,7 @@ ifneq ($(BITS_FORCE),)
   BITS := $(BITS_FORCE)
 endif
 OPT ?= -O1
-O   := obj/$(platform)$(BITS)
+O   := obj/$(PLAT)$(BITS)
 CFL := $(OPT) -ffp-contract=off -w -fPIC -fno-strict-aliasing -fwrapv -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 \
        -Igen/lift -Itools/lift -Ilibretro -Icore $(OSDEF) -DNO_PNG -DLIFTED $(CFLAGS)
 CSH := -include tools/lift/lift_cdefs.h -Icore -Icore/linux -Icore/chips -Icore/cpu -Icore/effects
