@@ -36,6 +36,13 @@ void retro_set_environment(retro_environment_t cb)
     if (cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log)) log_cb = log.log;
     bool yes = true;
     cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &(bool){ false });
+    {
+        static const struct retro_controller_description p1[] = { { "SNES Controller", RETRO_DEVICE_JOYPAD }, { "SNES Mouse", RETRO_DEVICE_MOUSE } };
+        static const struct retro_controller_description p2[] = { { "SNES Controller", RETRO_DEVICE_JOYPAD }, { "SNES Mouse", RETRO_DEVICE_MOUSE },
+                                                                  { "Super Scope", RETRO_DEVICE_LIGHTGUN } };
+        static const struct retro_controller_info ports[] = { { p1, 2 }, { p2, 3 }, { NULL, 0 } };
+        cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void *)ports);
+    }
     (void)yes;
 }
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
@@ -68,7 +75,12 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
     info->timing.sample_rate = 32000.0;
 }
 
-void retro_set_controller_port_device(unsigned port, unsigned device) { (void)port; (void)device; }
+static unsigned port_dev[2] = { RETRO_DEVICE_JOYPAD, RETRO_DEVICE_JOYPAD };
+void retro_set_controller_port_device(unsigned port, unsigned device)
+{
+    if (port < 2) port_dev[port] = device;
+    zs_snesmouse = port_dev[0] == RETRO_DEVICE_MOUSE ? 1 : port_dev[1] == RETRO_DEVICE_MOUSE ? 2 : port_dev[1] == RETRO_DEVICE_LIGHTGUN ? 3 : 0;
+}
 
 void retro_init(void)
 {
@@ -145,6 +157,25 @@ void retro_run(void)
         zs_pad[p] = m;
     }
 
+    zs_mouse_dx = zs_mouse_dy = 0; MouseButton = 0; zs_mouse_cursor = 0;
+    for (p = 0; p < 2; p++) {
+        if (port_dev[p] == RETRO_DEVICE_MOUSE) {
+            zs_mouse_dx = input_state_cb(p, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X);
+            zs_mouse_dy = input_state_cb(p, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_Y);
+            if (input_state_cb(p, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT)) MouseButton |= 1;
+            if (input_state_cb(p, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_RIGHT)) MouseButton |= 2;
+        } else if (port_dev[p] == RETRO_DEVICE_LIGHTGUN) {
+            extern unsigned short mousexloc, mouseyloc;
+            int sx = input_state_cb(p, RETRO_DEVICE_LIGHTGUN, 0, RETRO_DEVICE_ID_LIGHTGUN_SCREEN_X);
+            int sy = input_state_cb(p, RETRO_DEVICE_LIGHTGUN, 0, RETRO_DEVICE_ID_LIGHTGUN_SCREEN_Y);
+            if (input_state_cb(p, RETRO_DEVICE_LIGHTGUN, 0, RETRO_DEVICE_ID_LIGHTGUN_IS_OFFSCREEN)) { sx = 0; sy = 0; }
+            zs_mouse_dx = ((sx + 0x8000) * 256 >> 16) - (int)mousexloc;
+            zs_mouse_dy = ((sy + 0x8000) * 224 >> 16) - (int)mouseyloc;
+            if (input_state_cb(p, RETRO_DEVICE_LIGHTGUN, 0, RETRO_DEVICE_ID_LIGHTGUN_TRIGGER)) MouseButton |= 1;
+            if (input_state_cb(p, RETRO_DEVICE_LIGHTGUN, 0, RETRO_DEVICE_ID_LIGHTGUN_START)) MouseButton |= 2;
+            if (input_state_cb(p, RETRO_DEVICE_LIGHTGUN, 0, RETRO_DEVICE_ID_LIGHTGUN_AUX_A)) zs_mouse_cursor = 1;
+        }
+    }
     zs_frame_ready = 0;
     zs_run_frame();
 

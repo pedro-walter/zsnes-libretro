@@ -12,6 +12,7 @@ extern uint16_t zs_framebuf[];
 extern unsigned zs_width, zs_height;
 extern int zs_frame_ready;
 extern uint16_t zs_pad[2];
+extern int zs_snesmouse, zs_mouse_cursor, zs_mouse_dx, zs_mouse_dy, MouseButton;
 int zs_start(const char *rom_path);
 int zs_run_frame(void);
 void zs_stop(void);

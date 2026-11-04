@@ -76,6 +76,9 @@ Verification tools (`tools/lift/lift_rt.c`):
 * `tools/fuzzrom_par.sh <so> rom|dsp1|sfx|sa1|sdd1 <from> <to>`: generated register-fuzz ROMs (random PPU/DMA/chip traffic); a mismatch that
   also exists with `LIFT_NOOVR=all` is a lifter-vs-native effect, one that disappears with an override disabled is a bug in that override
   (this is how the StartDrawNewGfx16b pass order and the SA-1 BRK were found).
+  The remaining lifter-vs-native cases are random DMA setups whose B-bus register goes past $21FF: `transdma` then indexes `regptw`
+  out of range and calls whatever follows that table, which is layout dependent (rom 41: the ref reads a harmless value, the lifted core
+  hits `bad dispatch target 0x80ba8b`). Real games never do this.
 * Debug aids: harness `-Z <frame> <file>` dumps WRAM, `ZL_SCHED_TRACE=file` / `ZL_SCHED_TRACE_TXT` (lifted) and `ZS_SCHED_TRACE[_TXT]` (the hybrid
   `make all` core) log the scheduler state per scanline, `ZL_VD_TRACE=N` traces the drawer calls of the Nth frame.
 
@@ -90,7 +93,7 @@ builders, init and UI glue.
 * All 18 test ROMs (LoROM/HiROM, SA-1, SuperFX incl. Stunt Race FX, DSP-1, C4, OBC1 header, ST010/011, S-DD1, SPC7110) are identical
   to the asm reference core over thousands of frames with random input; Top Gear (E) also matches the real ZSNES executable's trace.
 * PAL/NTSC, SRAM, reset, save states, Pro Action Replay RAM cheats work. No zip/JMA (the frontend unwraps archives), no netplay/GUI,
-  mouse/Super Scope/multitap are not mapped. Game Genie codes patch the ROM image after the first frame (unverified against the original).
+  SNES mouse (port 1/2) and Super Scope (port 2, via the libretro lightgun device) are mapped (untested against real hardware behaviour; multitap is not). Game Genie codes patch the ROM image after the first frame (unverified against the original).
 * Not translated (will abort with a message if reached): the mode-7 EXTBG routines that patch their own code (`mode7ext.asm`), the
   DOS-only files, the hq2x/3x/4x filters.
 * Two bugs of the original asm were fixed because they made the reference itself misbehave: Stunt Race FX's old video engine read

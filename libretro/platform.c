@@ -75,7 +75,9 @@ uint16_t zs_framebuf[ZS_MAX_W * ZS_MAX_H];
 #endif
 unsigned zs_width = 256, zs_height = 224;
 int zs_frame_ready;
-uint16_t zs_pad[2];  /* RETRO_DEVICE_ID_JOYPAD_* bitmask per port */
+uint16_t zs_pad[2];
+int zs_snesmouse, zs_mouse_cursor;                       /* 0 pads, 1 mouse in port 1, 2 mouse in port 2, 3 Super Scope in port 2 */
+extern unsigned char snesmouse;  /* RETRO_DEVICE_ID_JOYPAD_* bitmask per port */
 
 /* coroutine primitives: ucontext on POSIX, fibers on Windows */
 #ifdef _WIN32
@@ -122,6 +124,8 @@ static void poll_input(void)
     int port, i;
     pressed[0x30] = zs_reset_req ? 1 : 0;
     zs_reset_req = 0;
+    snesmouse = (unsigned char)zs_snesmouse;
+    pressed[14] = zs_mouse_cursor ? 1 : 0;
     for (port = 0; port < 2; port++)
         for (i = 0; i < 12; i++)
             pressed[padkey_base[port] + i] = (zs_pad[port] >> i) & 1;
@@ -302,8 +306,9 @@ int zs_audio_chunk(int16_t *out)
 /* ---------------- mouse / time / misc ---------------- */
 int GetMouseX(void)     { return MouseX; }
 int GetMouseY(void)     { return MouseY; }
-int GetMouseMoveX(void) { return 0; }
-int GetMouseMoveY(void) { return 0; }
+int zs_mouse_dx, zs_mouse_dy;       /* set per frame by the libretro layer */
+int GetMouseMoveX(void) { return zs_mouse_dx; }
+int GetMouseMoveY(void) { return zs_mouse_dy; }
 int GetMouseButton(void){ return MouseButton; }
 void SetMouseMinX(int v) {}
 void SetMouseMaxX(int v) {}
