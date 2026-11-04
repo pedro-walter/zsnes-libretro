@@ -1,18 +1,27 @@
+# Software Information
 display_name = "Nintendo - SNES / SFC (ZSNES 1.42)"
+categories = "Emulator"
 authors = "ZSNES Team"
-supported_extensions = "smc|sfc|swc|fig|bs"
 corename = "ZSNES"
+supported_extensions = "smc|sfc|swc|fig|bs"
 license = "GPLv2"
 permissions = ""
 display_version = "1.42"
-categories = "Emulator"
+
+# Hardware Information
 manufacturer = "Nintendo"
 systemname = "Super Nintendo Entertainment System"
 systemid = "super_nes"
-database = "Nintendo - Super Nintendo Entertainment System"
-supports_no_game = "false"
+
+# Libretro Features
+firmware_count = 0
 savestate = "true"
 savestate_features = "basic"
 cheats = "false"
+input_descriptors = "true"
+supports_no_game = "false"
+database = "Nintendo - Super Nintendo Entertainment System"
+hw_render = "false"
 needs_fullpath = "true"
-description = "ZSNES 1.42 (the original x86 assembly core, lifted to C so it runs on 64-bit systems)."
+
+description = "ZSNES 1.42 with cycle-exact CPU/SPC timing. The original x86 assembly is translated to C so it runs on 64-bit and non-x86 systems (Linux, Windows, ARM). Needs no BIOS or firmware."
