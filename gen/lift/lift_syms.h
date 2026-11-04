@@ -7928,3 +7928,8 @@
 #define ZOVR_zl_UpdatePORSCMR ((0x7Cu << 21) | 1748u)
 #define ZOVR_zl_UpdateSCBRCOLR ((0x7Cu << 21) | 1749u)
 #define ZOVR_zl_UpdateCLSR ((0x7Cu << 21) | 1750u)
+#define ZOVR_zl_switchtonmi ((0x7Cu << 21) | 1751u)
+#define ZOVR_zl_NMIemulmode ((0x7Cu << 21) | 1752u)
+#define ZOVR_zl_switchtovirq ((0x7Cu << 21) | 1753u)
+#define ZOVR_zl_switchtovirqret ((0x7Cu << 21) | 1754u)
+#define ZOVR_zl_IRQemulmode ((0x7Cu << 21) | 1755u)

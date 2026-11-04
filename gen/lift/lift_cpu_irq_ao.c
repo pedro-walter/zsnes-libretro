@@ -54,6 +54,7 @@ dispatch:
     }
 do_ret: pc=M32(esp); esp+=4; goto dispatch;
 L0:
+    OVR_GUARD(1751)
     M8((u32)(0x340a446au))=0x1u;
     {u8 a_=M8((u32)(0x340a4461u)), b_=0x1u, r=(u8)(a_&b_);  zf=!r;}
     if (!zf) {goto L148;}
@@ -127,6 +128,7 @@ L134:
     {u32 a_=esi, b_=eax, r=(u32)(a_+b_); esi=r; }
     FLUSH(); return 0x1e016c0u;
 L148:
+    OVR_GUARD(1752)
     ebx=esi;
     {u32 a_=ebx, b_=M32((u32)(0x34034397u)), r=(u32)(a_-b_); ebx=r; }
     M16((u32)(0x340a4462u))=(u16)ebx;
@@ -187,6 +189,7 @@ L23f:
     {u32 a_=esi, b_=eax, r=(u32)(a_+b_); esi=r; }
     FLUSH(); return 0x1e016c0u;
 L253:
+    OVR_GUARD(1753)
     M8((u32)(0x34048138u))=0x80u;
     {u8 a_=M8((u32)(0x340a4461u)), b_=0x1u, r=(u8)(a_&b_);  zf=!r;}
     if (!zf) {goto L4bd;}
@@ -256,6 +259,7 @@ L378:
     {u32 a_=esi, b_=eax, r=(u32)(a_+b_); esi=r; }
     FLUSH(); return 0x1e016c0u;
 L38c:
+    OVR_GUARD(1754)
     M8((u32)(0x34048138u))=0x80u;
     {u8 a_=M8((u32)(0x340a4461u)), b_=0x1u, r=(u8)(a_&b_);  zf=!r;}
     if (!zf) {goto L4bd;}
@@ -325,6 +329,7 @@ L4ad:
     {u32 a_=esi, b_=eax, r=(u32)(a_+b_); esi=r; cf=r<a_;}
     pc=M32(esp); esp+=4; goto dispatch;
 L4bd:
+    OVR_GUARD(1755)
     ebx=esi;
     {u32 a_=ebx, b_=M32((u32)(0x34034397u)), r=(u32)(a_-b_); ebx=r; }
     M16((u32)(0x340a4462u))=(u16)ebx;

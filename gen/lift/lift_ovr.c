@@ -2715,6 +2715,11 @@ void zl_UpdateSCBRCOLR(void);
 static u32 ovw_zl_UpdateSCBRCOLR(void) { zl_UpdateSCBRCOLR(); return 0; }
 void zl_UpdateCLSR(void);
 static u32 ovw_zl_UpdateCLSR(void) { zl_UpdateCLSR(); return 0; }
+u32 zl_switchtonmi(void);
+u32 zl_NMIemulmode(void);
+u32 zl_switchtovirq(void);
+u32 zl_switchtovirqret(void);
+u32 zl_IRQemulmode(void);
 u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_wdsp00,
     ovw_zl_wdsp01,
@@ -4467,6 +4472,11 @@ u32 (*const lift_ovr_fns[])(void) = {
     ovw_zl_UpdatePORSCMR,
     ovw_zl_UpdateSCBRCOLR,
     ovw_zl_UpdateCLSR,
+    zl_switchtonmi,
+    zl_NMIemulmode,
+    zl_switchtovirq,
+    zl_switchtovirqret,
+    zl_IRQemulmode,
     0 };
 const char *const lift_ovr_names[] = {
     "WDSPReg00",
@@ -6220,8 +6230,13 @@ const char *const lift_ovr_names[] = {
     "UpdatePORSCMR",
     "UpdateSCBRCOLR",
     "UpdateCLSR",
+    "switchtonmi",
+    "NMIemulmode",
+    "switchtovirq",
+    "switchtovirqret",
+    "IRQemulmode",
     0 };
-const int lift_ovr_count = 1751;
+const int lift_ovr_count = 1756;
 const char *const lift_ovr_cnames[] = {
     "zl_wdsp00",
     "zl_wdsp01",
@@ -7974,6 +7989,11 @@ const char *const lift_ovr_cnames[] = {
     "zl_UpdatePORSCMR",
     "zl_UpdateSCBRCOLR",
     "zl_UpdateCLSR",
+    "zl_switchtonmi",
+    "zl_NMIemulmode",
+    "zl_switchtovirq",
+    "zl_switchtovirqret",
+    "zl_IRQemulmode",
     0 };
 const unsigned short lift_ovr_flags[] = {
     2,
@@ -9727,6 +9747,11 @@ const unsigned short lift_ovr_flags[] = {
     48896,
     48896,
     48896,
+    48897,
+    48897,
+    48897,
+    48897,
+    48897,
     0 };
 const unsigned lift_ovr_ids[] = {
     0x1a00610u,
@@ -11480,6 +11505,11 @@ const unsigned lift_ovr_ids[] = {
     0x1e035e6u,
     0x1e03678u,
     0x1e036cbu,
+    0x2000000u,
+    0x2000148u,
+    0x2000253u,
+    0x200038cu,
+    0x20004bdu,
     0 };
 const unsigned lift_text_id[] = {
     0x200000u,
